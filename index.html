@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>LinClock Terminal</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<main class="app-shell">
+		<header class="app-header">
+			<p class="eyebrow">Terminal de fichaje</p>
+			<h1>LinClock Empresa</h1>
+			<p id="currentDateTime" class="clock" aria-live="polite"></p>
+		</header>
+
+		<section id="screen-1" class="screen active" data-screen="1" aria-label="Inicio terminal">
+			<div class="screen-content center">
+				<div class="logo-circle">LC</div>
+				<h2>Terminal bloqueado</h2>
+				<p class="muted">Punto central de fichaje</p>
+				<button id="goToCheckin" class="btn btn-primary btn-xl">FICHAR</button>
+			</div>
+			<div class="screen-footer right">
+				<button id="goToAdminPin" class="btn btn-ghost btn-sm">Administracion RRHH</button>
+			</div>
+		</section>
+
+		<section id="screen-2" class="screen" data-screen="2" aria-label="Seleccion de empresa">
+			<div class="screen-content">
+				<h2>Selecciona tu empresa</h2>
+				<div id="companyGrid" class="card-grid"></div>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="1">Volver</button>
+			</div>
+		</section>
+
+		<section id="screen-3" class="screen" data-screen="3" aria-label="Lista de trabajadores">
+			<div class="screen-content">
+				<div class="section-head">
+					<h2 id="workersTitle">Trabajadores</h2>
+					<button class="btn btn-soft" data-nav="2">Cambiar empresa</button>
+				</div>
+				<label class="search-wrap" for="workerSearch">
+					<span>Buscar trabajador</span>
+					<input id="workerSearch" type="search" placeholder="Nombre o DNI">
+				</label>
+				<div id="workersList" class="list"></div>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="1">Volver</button>
+			</div>
+		</section>
+
+		<section id="screen-4" class="screen" data-screen="4" aria-label="Acciones de fichaje">
+			<div class="screen-content">
+				<h2>Acciones de fichaje</h2>
+				<div class="worker-summary">
+					<p><strong>Trabajador:</strong> <span id="actionWorkerName">-</span></p>
+					<p><strong>Empresa:</strong> <span id="actionCompanyName">-</span></p>
+					<p><strong>Estado actual:</strong> <span id="actionStateChip" class="state-chip state-out">Fuera</span></p>
+				</div>
+				<div id="actionButtons" class="action-buttons"></div>
+				<div class="geo-box">
+					<p><strong>Geolocalizacion:</strong> <span id="geoStatus">No solicitada</span></p>
+					<p id="geoCoords" class="muted"></p>
+				</div>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="3">Volver</button>
+			</div>
+		</section>
+
+		<section id="screen-5" class="screen" data-screen="5" aria-label="PIN administracion">
+			<div class="screen-content narrow">
+				<h2>Acceso RRHH</h2>
+				<p class="muted">Introduce PIN para administrar</p>
+				<label for="adminPin">PIN</label>
+				<input id="adminPin" type="password" inputmode="numeric" maxlength="6" placeholder="******">
+				<button id="submitPin" class="btn btn-primary">Entrar</button>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="1">Volver</button>
+			</div>
+		</section>
+
+		<section id="screen-6" class="screen" data-screen="6" aria-label="Panel RRHH">
+			<div class="screen-content">
+				<h2>Panel de administracion</h2>
+				<div class="card-grid admin-grid">
+					<button class="admin-card" data-nav="7">Anadir trabajador</button>
+					<button class="admin-card" data-nav="8">Editar trabajador</button>
+					<button class="admin-card" data-nav="9">Ver fichajes</button>
+					<button id="exportAllReports" class="admin-card">Exportar informes</button>
+				</div>
+			</div>
+			<div class="screen-footer between">
+				<button id="logoutAdmin" class="btn btn-danger">Cerrar sesion</button>
+			</div>
+		</section>
+
+		<section id="screen-7" class="screen" data-screen="7" aria-label="Anadir trabajador">
+			<div class="screen-content">
+				<h2>Anadir trabajador</h2>
+				<form id="addWorkerForm" class="form-grid" novalidate>
+					<label>Nombre<input name="nombre" type="text" required></label>
+					<label>Apellidos<input name="apellidos" type="text" required></label>
+					<label>DNI<input name="dni" type="text" required></label>
+					<label>Empresa<select id="addWorkerCompany" name="empresa" required></select></label>
+					<label>Email<input name="email" type="email" required></label>
+					<button type="submit" class="btn btn-primary">Guardar</button>
+				</form>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="6">Volver</button>
+			</div>
+		</section>
+
+		<section id="screen-8" class="screen" data-screen="8" aria-label="Editar trabajador">
+			<div class="screen-content">
+				<h2>Editar trabajador</h2>
+				<label for="editWorkerSelect">Selecciona trabajador</label>
+				<select id="editWorkerSelect"></select>
+				<form id="editWorkerForm" class="form-grid" novalidate>
+					<label>Nombre<input id="editName" name="nombre" type="text" required></label>
+					<label>Empresa<select id="editCompany" name="empresa" required></select></label>
+					<label>Estado
+						<select id="editActive" name="estado" required>
+							<option value="activo">Activo</option>
+							<option value="inactivo">Inactivo</option>
+						</select>
+					</label>
+					<button type="submit" class="btn btn-primary">Guardar cambios</button>
+				</form>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="6">Volver</button>
+			</div>
+		</section>
+
+		<section id="screen-9" class="screen" data-screen="9" aria-label="Ver fichajes RRHH">
+			<div class="screen-content">
+				<div class="section-head">
+					<h2>Consulta de fichajes</h2>
+					<button id="exportFiltered" class="btn btn-soft">Exportar CSV</button>
+				</div>
+				<div class="filters-grid">
+					<label>Empresa<select id="logCompanyFilter"></select></label>
+					<label>Trabajador<select id="logWorkerFilter"></select></label>
+					<label>Desde<input id="fromDate" type="date"></label>
+					<label>Hasta<input id="toDate" type="date"></label>
+				</div>
+				<div id="logsTable" class="logs-table"></div>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="6">Volver</button>
+			</div>
+		</section>
+	</main>
+
+	<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+	<script src="js/app.js"></script>
+</body>
+</html>
