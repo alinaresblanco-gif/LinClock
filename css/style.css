@@ -47,10 +47,36 @@ body {
 }
 
 .app-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
 	border-radius: var(--radius-lg);
 	padding: 1rem 1.2rem;
 	background: linear-gradient(130deg, #f2faf8 0%, #e4f0f1 100%);
 	border: 1px solid #d0e2e4;
+}
+
+.app-header-info {
+	min-width: 0;
+	flex: 1;
+}
+
+.app-header-logo-wrap {
+	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	padding: 0.35rem 0.45rem;
+	border-radius: 14px;
+	background: rgba(255, 255, 255, 0.65);
+	border: 1px solid #cfe1e4;
+}
+
+.app-header-logo {
+	display: block;
+	height: 60px;
+	width: auto;
+	object-fit: contain;
 }
 
 .eyebrow {
@@ -394,6 +420,19 @@ label {
 }
 
 @media (max-width: 920px) {
+	.app-header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.app-header-logo-wrap {
+		align-self: flex-end;
+	}
+
+	.app-header-logo {
+		height: 48px;
+	}
+
 	.card-grid,
 	.form-grid,
 	.filters-grid,
