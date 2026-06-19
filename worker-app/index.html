@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<title>LinClock - App Trabajador</title>
+	<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+	<main class="app-worker">
+		<header class="app-worker-header">
+			<div class="app-worker-header-content">
+				<img src="../imagenes/logo_LinClock.png" alt="Logo LinClock" class="app-worker-logo">
+				<h1>LinClock Trabajo</h1>
+			</div>
+		</header>
+
+		<!-- Pantalla 1: Login -->
+		<section id="screen-login" class="screen-worker active" data-screen="login" aria-label="Login">
+			<div class="screen-worker-content center">
+				<div class="login-card">
+					<h2>Acceso de trabajador</h2>
+					<p class="muted">Introduce tu correo para fichaje</p>
+					<form id="loginForm" novalidate>
+						<label>Correo electrónico</label>
+						<input id="loginEmail" type="email" placeholder="tu.email@empresa.com" required autocomplete="email">
+						<button type="submit" class="btn btn-primary btn-block">Entrar</button>
+					</form>
+					<p id="loginError" class="login-error"></p>
+				</div>
+			</div>
+		</section>
+
+		<!-- Pantalla 2: Dashboard de fichaje -->
+		<section id="screen-dashboard" class="screen-worker" data-screen="dashboard" aria-label="Dashboard">
+			<div class="screen-worker-content">
+				<div class="dashboard-header">
+					<div>
+						<p class="eyebrow">Trabajador</p>
+						<h2 id="dashboardName">-</h2>
+						<p id="dashboardCompany" class="muted">-</p>
+					</div>
+					<button id="logoutBtn" class="btn btn-ghost btn-sm">Cerrar sesion</button>
+				</div>
+
+				<div class="dashboard-status">
+					<p><strong>Estado:</strong> <span id="currentStatus" class="state-chip state-out">Fuera</span></p>
+					<p id="currentTime" class="muted">-</p>
+				</div>
+
+				<div class="dashboard-actions">
+					<h3>Acciones de fichaje</h3>
+					<div id="actionButtons" class="action-buttons"></div>
+				</div>
+
+				<div class="dashboard-qr">
+					<h3>Tu QR personal</h3>
+					<p class="muted">Muéstrale este código a la tablet para fichar</p>
+					<div id="workerQrCode" class="worker-qr-display"></div>
+				</div>
+
+				<div class="dashboard-tabs">
+					<button class="tab-btn active" data-tab="recent">Últimos fichajes</button>
+					<button class="tab-btn" data-tab="history">Historial completo</button>
+				</div>
+
+				<div id="recentLogs" class="logs-view"></div>
+				<div id="historyView" class="logs-view" style="display: none;"></div>
+			</div>
+		</section>
+	</main>
+
+	<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+	<script src="js/app.js"></script>
+</body>
+</html>
