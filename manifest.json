@@ -1,0 +1,46 @@
+{
+  "name": "LinClock Terminal",
+  "short_name": "LinClock Terminal",
+  "description": "Terminal de fichaje con escaneo de códigos QR",
+  "start_url": "/LinClock/",
+  "scope": "/LinClock/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f5f7",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "/LinClock/imagenes/logo_LinClock.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/LinClock/imagenes/logo_LinClock.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/LinClock/imagenes/logo_LinClock.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/LinClock/imagenes/logo_LinClock.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "screenshots": [
+    {
+      "src": "/LinClock/imagenes/logo_LinClock.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "LinClock - App Trabajador",
+  "short_name": "LinClock Trabajo",
+  "description": "App personal de fichaje para trabajadores",
+  "start_url": "/LinClock/worker-app/",
+  "scope": "/LinClock/worker-app/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f0f5f7",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "../imagenes/logo_LinClock.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../imagenes/logo_LinClock.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "../imagenes/logo_LinClock.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "../imagenes/logo_LinClock.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "screenshots": [
+    {
+      "src": "../imagenes/logo_LinClock.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}
