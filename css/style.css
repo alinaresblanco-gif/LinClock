@@ -47,10 +47,9 @@ body {
 }
 
 .app-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
+	display: grid;
+	justify-items: center;
+	gap: 0.7rem;
 	border-radius: var(--radius-lg);
 	padding: 1rem 1.2rem;
 	background: linear-gradient(130deg, #f2faf8 0%, #e4f0f1 100%);
@@ -58,12 +57,10 @@ body {
 }
 
 .app-header-info {
-	min-width: 0;
-	flex: 1;
+	width: 100%;
 }
 
 .app-header-logo-wrap {
-	flex-shrink: 0;
 	display: grid;
 	place-items: center;
 	padding: 0.3rem 0.5rem;
@@ -420,15 +417,6 @@ label {
 }
 
 @media (max-width: 920px) {
-	.app-header {
-		flex-direction: column;
-		align-items: flex-start;
-	}
-
-	.app-header-logo-wrap {
-		align-self: flex-end;
-	}
-
 	.app-header-logo {
 		height: 48px;
 	}
