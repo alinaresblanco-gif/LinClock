@@ -45,7 +45,10 @@
 			<div class="screen-content">
 				<div class="section-head">
 					<h2 id="workersTitle">Trabajadores</h2>
-					<button class="btn btn-soft" data-nav="2">Cambiar empresa</button>
+					<div class="section-actions">
+						<button id="openQrModal" class="btn btn-soft">Escanear QR</button>
+						<button class="btn btn-soft" data-nav="2">Cambiar empresa</button>
+					</div>
 				</div>
 				<label class="search-wrap" for="workerSearch">
 					<span>Buscar trabajador</span>
@@ -164,8 +167,23 @@
 		</section>
 	</main>
 
+	<div id="qrModal" class="modal-backdrop" aria-hidden="true">
+		<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="qrModalTitle">
+			<h3 id="qrModalTitle">Escanear QR de trabajador</h3>
+			<p id="qrStatus" class="muted">Abre la camara y acerca el QR del trabajador.</p>
+			<div id="qrReader" class="qr-reader-box"></div>
+			<p class="muted">Si la camara falla, pega manualmente el contenido del QR (ID, DNI o nombre).</p>
+			<input id="qrInput" type="text" placeholder="Ejemplo: w2 o 21123456B" autocomplete="off">
+			<div class="modal-actions">
+				<button id="submitQr" class="btn btn-primary">Validar QR</button>
+				<button id="closeQrModal" class="btn btn-ghost">Cancelar</button>
+			</div>
+		</div>
+	</div>
+
 	<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+	<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 	<script src="js/app.js"></script>
 </body>
 </html>

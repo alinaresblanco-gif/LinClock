@@ -261,6 +261,12 @@ body {
 	gap: 1rem;
 }
 
+.section-actions {
+	display: flex;
+	gap: 0.55rem;
+	flex-wrap: wrap;
+}
+
 .search-wrap {
 	display: grid;
 	gap: 0.35rem;
@@ -416,9 +422,67 @@ label {
 	background: #7c3a05;
 }
 
+.modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(17, 33, 38, 0.45);
+	display: none;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	z-index: 20;
+}
+
+.modal-backdrop.show {
+	display: flex;
+}
+
+.modal-card {
+	width: min(560px, 100%);
+	background: #ffffff;
+	border: 1px solid #cfe1e4;
+	border-radius: 16px;
+	padding: 1rem;
+	box-shadow: 0 14px 30px rgba(19, 46, 52, 0.25);
+}
+
+.modal-card h3 {
+	margin: 0 0 0.45rem;
+	font: 700 1.3rem/1.1 'Outfit', sans-serif;
+}
+
+.qr-reader-box {
+	width: min(380px, 100%);
+	margin: 0.7rem auto;
+	padding: 0.45rem;
+	border-radius: 12px;
+	border: 1px solid #d2e4e8;
+	background: #f8fcfc;
+	overflow: hidden;
+}
+
+.qr-reader-box video {
+	border-radius: 10px;
+}
+
+.modal-actions {
+	display: flex;
+	gap: 0.6rem;
+	justify-content: flex-end;
+	margin-top: 0.8rem;
+}
+
 @media (max-width: 920px) {
 	.app-header-logo {
 		height: 48px;
+	}
+
+	.modal-actions {
+		justify-content: stretch;
+	}
+
+	.modal-actions .btn {
+		flex: 1;
 	}
 
 	.card-grid,

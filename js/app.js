@@ -24,6 +24,17 @@ const companyGridEl = document.getElementById('companyGrid');
 const workersTitleEl = document.getElementById('workersTitle');
 const workerSearchEl = document.getElementById('workerSearch');
 const workersListEl = document.getElementById('workersList');
+const openQrModalEl = document.getElementById('openQrModal');
+
+const qrModalEl = document.getElementById('qrModal');
+const qrInputEl = document.getElementById('qrInput');
+const submitQrEl = document.getElementById('submitQr');
+const closeQrModalEl = document.getElementById('closeQrModal');
+const qrStatusEl = document.getElementById('qrStatus');
+
+let qrScanner = null;
+let qrScannerActive = false;
+let qrReadLock = false;
 
 const actionWorkerNameEl = document.getElementById('actionWorkerName');
 const actionCompanyNameEl = document.getElementById('actionCompanyName');
@@ -168,6 +179,170 @@ function selectedWorker() {
 	return state.workers.find((worker) => worker.id === state.selectedWorkerId) || null;
 }
 
+function openQrModal() {
+	if (!state.selectedCompany) {
+		showToast('Selecciona primero una empresa', 'warn');
+		gotoScreen(2);
+		return;
+	}
+	qrInputEl.value = '';
+	qrStatusEl.textContent = 'Abre la camara y acerca el QR del trabajador.';
+	qrModalEl.classList.add('show');
+	qrModalEl.setAttribute('aria-hidden', 'false');
+	setTimeout(() => qrInputEl.focus(), 50);
+	startQrScanner();
+}
+
+function closeQrModal() {
+	qrModalEl.classList.remove('show');
+	qrModalEl.setAttribute('aria-hidden', 'true');
+	stopQrScanner();
+}
+
+function normalizeQrValue(value) {
+	const clean = value.trim();
+	if (!clean) return '';
+	if (clean.includes(':')) {
+		const parts = clean.split(':');
+		return parts[parts.length - 1].trim();
+	}
+	return clean;
+}
+
+function findWorkerByQr(qrRaw) {
+	let qrValue = normalizeQrValue(qrRaw);
+	let qrCompany = '';
+
+	try {
+		const parsed = JSON.parse(qrValue);
+		if (parsed && typeof parsed === 'object') {
+			qrValue = String(parsed.workerId || parsed.id || parsed.dni || parsed.nombre || '').trim();
+			qrCompany = String(parsed.empresa || parsed.company || '').trim();
+		}
+	} catch {
+		// If it's not JSON, use plain value as ID/DNI/name.
+	}
+
+	const lookup = qrValue.toLowerCase();
+	if (!lookup) {
+		return { worker: null, companyMismatch: false };
+	}
+
+	const worker = state.workers.find((item) => {
+		return item.id.toLowerCase() === lookup
+			|| item.dni.toLowerCase() === lookup
+			|| item.nombre.toLowerCase() === lookup;
+	}) || null;
+
+	if (worker && qrCompany && worker.empresa.toLowerCase() !== qrCompany.toLowerCase()) {
+		return { worker: null, companyMismatch: true };
+	}
+
+	return { worker, companyMismatch: false };
+}
+
+async function startQrScanner() {
+	if (typeof Html5Qrcode === 'undefined') {
+		qrStatusEl.textContent = 'Lector no disponible. Usa entrada manual.';
+		return;
+	}
+
+	try {
+		const cameras = await Html5Qrcode.getCameras();
+		if (!cameras || !cameras.length) {
+			qrStatusEl.textContent = 'No se detecta camara. Usa entrada manual.';
+			return;
+		}
+
+		const rear = cameras.find((cam) => /rear|back|trasera/i.test(cam.label));
+		const cameraId = (rear || cameras[0]).id;
+		qrScanner = qrScanner || new Html5Qrcode('qrReader');
+		if (qrScannerActive) {
+			return;
+		}
+
+		await qrScanner.start(
+			cameraId,
+			{ fps: 10, qrbox: { width: 220, height: 220 } },
+			(decodedText) => {
+				if (qrReadLock) return;
+				qrReadLock = true;
+				submitQrMatch(decodedText, true).finally(() => {
+					setTimeout(() => {
+						qrReadLock = false;
+					}, 500);
+				});
+			},
+			() => {}
+		);
+
+		qrScannerActive = true;
+		qrStatusEl.textContent = 'Camara activa. Escaneando QR...';
+	} catch {
+		qrStatusEl.textContent = 'No se pudo abrir la camara. Usa entrada manual.';
+	}
+}
+
+async function stopQrScanner() {
+	if (!qrScanner || !qrScannerActive) {
+		return;
+	}
+	try {
+		await qrScanner.stop();
+		await qrScanner.clear();
+	} catch {
+		// Ignore scanner stop issues when closing modal.
+	} finally {
+		qrScannerActive = false;
+	}
+}
+
+function completeQrFlow(worker, source = 'manual') {
+	state.selectedWorkerId = worker.id;
+	const actions = actionsByWorkerState(worker.estado);
+
+	if (actions.length === 1) {
+		closeQrModal();
+		registerCheckin(worker, actions[0]);
+		showToast(source === 'camera' ? 'QR leido y fichaje realizado' : 'Fichaje realizado');
+		return;
+	}
+
+	closeQrModal();
+	gotoScreen(4);
+	requestGeo();
+	showToast('QR valido. Selecciona Pausa o Salida.');
+}
+
+function submitQrMatch(qrRaw = null, fromCamera = false) {
+	const payload = qrRaw ?? qrInputEl.value;
+	const match = findWorkerByQr(payload);
+	const worker = match.worker;
+
+	if (match.companyMismatch) {
+		showToast('Empresa del QR no coincide', 'warn');
+		return Promise.resolve();
+	}
+
+	if (!worker) {
+		showToast('QR no valido o trabajador no encontrado', 'error');
+		return Promise.resolve();
+	}
+
+	if (!worker.activo) {
+		showToast('Trabajador inactivo', 'warn');
+		return Promise.resolve();
+	}
+
+	if (worker.empresa !== state.selectedCompany) {
+		showToast('El QR no pertenece a la empresa seleccionada', 'warn');
+		return Promise.resolve();
+	}
+
+	completeQrFlow(worker, fromCamera ? 'camera' : 'manual');
+	return Promise.resolve();
+}
+
 function requestGeo() {
 	geoStatusEl.textContent = 'Solicitando...';
 	geoCoordsEl.textContent = '';
@@ -251,6 +426,31 @@ function setupNavigation() {
 
 	document.querySelectorAll('[data-nav]').forEach((btn) => {
 		btn.addEventListener('click', () => gotoScreen(btn.dataset.nav));
+	});
+}
+
+function setupQrModal() {
+	openQrModalEl.addEventListener('click', openQrModal);
+	closeQrModalEl.addEventListener('click', closeQrModal);
+	submitQrEl.addEventListener('click', () => submitQrMatch());
+
+	qrInputEl.addEventListener('keydown', (event) => {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			submitQrMatch();
+		}
+	});
+
+	qrModalEl.addEventListener('click', (event) => {
+		if (event.target === qrModalEl) {
+			closeQrModal();
+		}
+	});
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key === 'Escape' && qrModalEl.classList.contains('show')) {
+			closeQrModal();
+		}
 	});
 }
 
@@ -515,6 +715,7 @@ function boot() {
 	hydrateCompanySelects();
 	setupNavigation();
 	setupAdminPin();
+	setupQrModal();
 	setupAddWorkerForm();
 	setupEditWorkerForm();
 	setupLogsEvents();
