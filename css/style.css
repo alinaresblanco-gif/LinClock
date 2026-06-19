@@ -472,9 +472,69 @@ label {
 	margin-top: 0.8rem;
 }
 
+.qr-worker-layout {
+	display: grid;
+	grid-template-columns: minmax(220px, 320px) 1fr;
+	gap: 1rem;
+	align-items: start;
+}
+
+.qr-worker-controls {
+	display: grid;
+	gap: 0.6rem;
+}
+
+.qr-worker-card {
+	border: 1px solid #d6e5e8;
+	border-radius: 16px;
+	background: #f9fdfd;
+	padding: 1rem;
+	display: grid;
+	justify-items: center;
+	gap: 0.6rem;
+}
+
+.worker-qr-code {
+	width: 240px;
+	min-height: 240px;
+	display: grid;
+	place-items: center;
+	background: #ffffff;
+	border: 1px solid #d4e4e7;
+	border-radius: 12px;
+	padding: 0.45rem;
+}
+
+.worker-qr-label {
+	margin: 0;
+	font-weight: 700;
+}
+
+.worker-qr-payload {
+	width: min(100%, 460px);
+	margin: 0;
+	padding: 0.7rem;
+	border-radius: 10px;
+	border: 1px solid #d0e0e3;
+	background: #ffffff;
+	font: 600 0.9rem/1.35 'Barlow', sans-serif;
+	color: #1e3a3f;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 @media (max-width: 920px) {
 	.app-header-logo {
 		height: 48px;
+	}
+
+	.qr-worker-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.worker-qr-code {
+		width: min(250px, 100%);
+		min-height: 250px;
 	}
 
 	.modal-actions {

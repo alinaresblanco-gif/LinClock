@@ -59,6 +59,16 @@ const fromDateEl = document.getElementById('fromDate');
 const toDateEl = document.getElementById('toDate');
 const logsTableEl = document.getElementById('logsTable');
 
+const workerQrCompanySelectEl = document.getElementById('workerQrCompanySelect');
+const workerQrSelectEl = document.getElementById('workerQrSelect');
+const refreshWorkerQrEl = document.getElementById('refreshWorkerQr');
+const copyWorkerQrPayloadEl = document.getElementById('copyWorkerQrPayload');
+const workerQrCodeEl = document.getElementById('workerQrCode');
+const workerQrLabelEl = document.getElementById('workerQrLabel');
+const workerQrPayloadEl = document.getElementById('workerQrPayload');
+
+let workerQrInstance = null;
+
 function formatDateTime(date) {
 	return new Intl.DateTimeFormat('es-ES', {
 		dateStyle: 'full',
@@ -103,6 +113,11 @@ function gotoScreen(id) {
 	if (state.currentScreen === '9') {
 		hydrateLogFilters();
 		renderLogs();
+	}
+	if (state.currentScreen === '10') {
+		hydrateWorkerQrCompanyOptions();
+		hydrateWorkerQrWorkerOptions();
+		renderWorkerQr();
 	}
 }
 
@@ -689,6 +704,99 @@ function setupLogsEvents() {
 	});
 }
 
+function hydrateWorkerQrCompanyOptions() {
+	const previous = workerQrCompanySelectEl.value;
+	workerQrCompanySelectEl.innerHTML = '';
+	state.companies.forEach((company) => {
+		workerQrCompanySelectEl.add(new Option(company, company));
+	});
+
+	if (previous && state.companies.includes(previous)) {
+		workerQrCompanySelectEl.value = previous;
+		return;
+	}
+	workerQrCompanySelectEl.value = state.selectedCompany || state.companies[0] || '';
+}
+
+function hydrateWorkerQrWorkerOptions() {
+	const company = workerQrCompanySelectEl.value;
+	const previous = workerQrSelectEl.value;
+	workerQrSelectEl.innerHTML = '';
+
+	const companyWorkers = state.workers.filter((worker) => worker.empresa === company && worker.activo);
+	companyWorkers.forEach((worker) => {
+		workerQrSelectEl.add(new Option(`${worker.nombre} (${worker.dni})`, worker.id));
+	});
+
+	if (!companyWorkers.length) {
+		return;
+	}
+
+	if (previous && companyWorkers.some((worker) => worker.id === previous)) {
+		workerQrSelectEl.value = previous;
+		return;
+	}
+	workerQrSelectEl.value = companyWorkers[0].id;
+}
+
+function buildWorkerQrPayload(worker) {
+	return JSON.stringify({
+		workerId: worker.id,
+		dni: worker.dni,
+		nombre: worker.nombre,
+		empresa: worker.empresa,
+		ts: Date.now()
+	});
+}
+
+function renderWorkerQr() {
+	const workerId = workerQrSelectEl.value;
+	const worker = state.workers.find((item) => item.id === workerId && item.activo);
+
+	if (!worker) {
+		workerQrCodeEl.innerHTML = '';
+		workerQrLabelEl.textContent = 'Sin trabajadores activos en esta empresa';
+		workerQrPayloadEl.textContent = '';
+		return;
+	}
+
+	const payload = buildWorkerQrPayload(worker);
+	workerQrCodeEl.innerHTML = '';
+	workerQrInstance = new QRCode(workerQrCodeEl, {
+		text: payload,
+		width: 220,
+		height: 220,
+		correctLevel: QRCode.CorrectLevel.M
+	});
+
+	workerQrLabelEl.textContent = `${worker.nombre} - ${worker.empresa}`;
+	workerQrPayloadEl.textContent = payload;
+}
+
+function setupWorkerQrScreen() {
+	workerQrCompanySelectEl.addEventListener('change', () => {
+		hydrateWorkerQrWorkerOptions();
+		renderWorkerQr();
+	});
+
+	workerQrSelectEl.addEventListener('change', renderWorkerQr);
+	refreshWorkerQrEl.addEventListener('click', renderWorkerQr);
+
+	copyWorkerQrPayloadEl.addEventListener('click', async () => {
+		const payload = workerQrPayloadEl.textContent.trim();
+		if (!payload) {
+			showToast('No hay datos QR para copiar', 'warn');
+			return;
+		}
+		try {
+			await navigator.clipboard.writeText(payload);
+			showToast('Datos QR copiados');
+		} catch {
+			showToast('No se pudo copiar en este navegador', 'warn');
+		}
+	});
+}
+
 function seedLogs() {
 	const baseDate = new Date();
 	const samples = [
@@ -719,6 +827,7 @@ function boot() {
 	setupAddWorkerForm();
 	setupEditWorkerForm();
 	setupLogsEvents();
+	setupWorkerQrScreen();
 	seedLogs();
 
 	workerSearchEl.addEventListener('input', renderWorkers);

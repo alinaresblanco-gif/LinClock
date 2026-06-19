@@ -27,6 +27,7 @@
 				<button id="goToCheckin" class="btn btn-primary btn-xl">FICHAR</button>
 			</div>
 			<div class="screen-footer right">
+				<button class="btn btn-ghost btn-sm" data-nav="10">QR Trabajador</button>
 				<button id="goToAdminPin" class="btn btn-ghost btn-sm">Administracion RRHH</button>
 			</div>
 		</section>
@@ -165,6 +166,29 @@
 				<button class="btn btn-ghost" data-nav="6">Volver</button>
 			</div>
 		</section>
+
+		<section id="screen-10" class="screen" data-screen="10" aria-label="QR trabajador">
+			<div class="screen-content">
+				<h2>QR del trabajador</h2>
+				<p class="muted">Muestra este QR en el movil para fichar en la tablet.</p>
+				<div class="qr-worker-layout">
+					<div class="qr-worker-controls">
+						<label>Empresa<select id="workerQrCompanySelect"></select></label>
+						<label>Trabajador<select id="workerQrSelect"></select></label>
+						<button id="refreshWorkerQr" class="btn btn-soft">Actualizar QR</button>
+						<button id="copyWorkerQrPayload" class="btn btn-ghost">Copiar datos QR</button>
+					</div>
+					<div class="qr-worker-card">
+						<div id="workerQrCode" class="worker-qr-code"></div>
+						<p id="workerQrLabel" class="worker-qr-label">Selecciona un trabajador</p>
+						<pre id="workerQrPayload" class="worker-qr-payload"></pre>
+					</div>
+				</div>
+			</div>
+			<div class="screen-footer between">
+				<button class="btn btn-ghost" data-nav="1">Volver</button>
+			</div>
+		</section>
 	</main>
 
 	<div id="qrModal" class="modal-backdrop" aria-hidden="true">
@@ -183,6 +207,7 @@
 
 	<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 	<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 	<script src="js/app.js"></script>
 </body>
