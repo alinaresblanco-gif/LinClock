@@ -7,6 +7,11 @@ const DEMO_WORKERS = [
 	{ id: 'w4', nombre: 'Noelia Ruiz', dni: '44555666D', empresa: 'Nalucha', email: 'noelia@empresa.com', estado: 'fuera', activo: true }
 ];
 
+const STORAGE_KEYS = {
+	workerId: 'currentWorkerId',
+	workerEmail: 'currentWorkerEmail'
+};
+
 const state = {
 	currentWorker: null,
 	logs: [],
@@ -18,7 +23,6 @@ const screenDashboardEl = document.getElementById('screen-dashboard');
 const loginFormEl = document.getElementById('loginForm');
 const loginEmailEl = document.getElementById('loginEmail');
 const loginErrorEl = document.getElementById('loginError');
-const logoutBtnEl = document.getElementById('logoutBtn');
 
 const dashboardNameEl = document.getElementById('dashboardName');
 const dashboardCompanyEl = document.getElementById('dashboardCompany');
@@ -79,6 +83,32 @@ function findWorkerByEmail(email) {
 	return DEMO_WORKERS.find((w) => w.email.toLowerCase() === email.toLowerCase() && w.activo) || null;
 }
 
+function findWorkerById(workerId) {
+	return DEMO_WORKERS.find((w) => w.id === workerId && w.activo) || null;
+}
+
+function getWorkerStateStorageKey(workerId) {
+	return `worker_state_${workerId}`;
+}
+
+function loadWorkerData(worker) {
+	const savedState = localStorage.getItem(getWorkerStateStorageKey(worker.id));
+	if (savedState) {
+		worker.estado = savedState;
+	}
+
+	const savedLogs = localStorage.getItem(`logs_${worker.id}`);
+	if (savedLogs) {
+		try {
+			state.logs = JSON.parse(savedLogs);
+		} catch {
+			state.logs = [];
+		}
+	} else {
+		state.logs = [];
+	}
+}
+
 function handleLogin(event) {
 	event.preventDefault();
 	const email = loginEmailEl.value.trim();
@@ -95,20 +125,13 @@ function handleLogin(event) {
 	}
 
 	state.currentWorker = worker;
-	localStorage.setItem('currentWorkerEmail', email);
+	loadWorkerData(worker);
+	localStorage.setItem(STORAGE_KEYS.workerEmail, email);
+	localStorage.setItem(STORAGE_KEYS.workerId, worker.id);
 	loginErrorEl.textContent = '';
 	gotoScreen('dashboard');
 	renderDashboard();
 	startClockUpdate();
-}
-
-function logout() {
-	state.currentWorker = null;
-	localStorage.removeItem('currentWorkerEmail');
-	loginFormEl.reset();
-	loginErrorEl.textContent = '';
-	gotoScreen('login');
-	stopClockUpdate();
 }
 
 function getStateLabel(value) {
@@ -146,6 +169,7 @@ function recordCheckin(action) {
 	state.logs.unshift(log);
 	state.currentWorker.estado = action.nextState;
 	localStorage.setItem(`logs_${state.currentWorker.id}`, JSON.stringify(state.logs));
+	localStorage.setItem(getWorkerStateStorageKey(state.currentWorker.id), action.nextState);
 	
 	showToast(`${action.label} registrado correctamente`);
 	renderDashboard();
@@ -284,21 +308,16 @@ function setupTabs() {
 }
 
 function restoreSession() {
-	const savedEmail = localStorage.getItem('currentWorkerEmail');
-	if (savedEmail) {
-		const worker = findWorkerByEmail(savedEmail);
+	const savedWorkerId = localStorage.getItem(STORAGE_KEYS.workerId);
+	const savedEmail = localStorage.getItem(STORAGE_KEYS.workerEmail);
+
+	if (savedWorkerId || savedEmail) {
+		const worker = savedWorkerId ? findWorkerById(savedWorkerId) : findWorkerByEmail(savedEmail);
 		if (worker) {
 			state.currentWorker = worker;
-			
-			// Recuperar logs del trabajador desde localStorage
-			const savedLogs = localStorage.getItem(`logs_${worker.id}`);
-			if (savedLogs) {
-				try {
-					state.logs = JSON.parse(savedLogs);
-				} catch {
-					state.logs = [];
-				}
-			}
+			loadWorkerData(worker);
+			localStorage.setItem(STORAGE_KEYS.workerId, worker.id);
+			localStorage.setItem(STORAGE_KEYS.workerEmail, worker.email);
 
 			gotoScreen('dashboard');
 			renderDashboard();
@@ -313,7 +332,6 @@ function restoreSession() {
 
 function boot() {
 	loginFormEl.addEventListener('submit', handleLogin);
-	logoutBtnEl.addEventListener('click', logout);
 	setupTabs();
 	restoreSession();
 }
