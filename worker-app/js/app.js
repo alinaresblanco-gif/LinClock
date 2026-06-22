@@ -1,19 +1,17 @@
 'use strict';
 
-const DEMO_WORKERS = [
-	{ id: 'w1', nombre: 'Carlos Mena', dni: '12345678A', empresa: 'Rivimetal', email: 'carlos@empresa.com', estado: 'fuera', activo: true },
-	{ id: 'w2', nombre: 'Lucia Perez', dni: '21123456B', empresa: 'Rivimetal', email: 'lucia@empresa.com', estado: 'en_jornada', activo: true },
-	{ id: 'w3', nombre: 'Sergio Diaz', dni: '33444555C', empresa: 'Dismecamo', email: 'sergio@empresa.com', estado: 'en_pausa', activo: true },
-	{ id: 'w4', nombre: 'Noelia Ruiz', dni: '44555666D', empresa: 'Nalucha', email: 'noelia@empresa.com', estado: 'fuera', activo: true }
-];
+// URL base del backend
+const API_BASE = 'http://localhost:3000';
+// Para producción, cambiar a: 'https://tu-backend.com'
 
 const STORAGE_KEYS = {
-	workerId: 'currentWorkerId',
-	workerEmail: 'currentWorkerEmail'
+	authToken: 'authToken',
+	currentWorker: 'currentWorker'
 };
 
 const state = {
 	currentWorker: null,
+	authToken: null,
 	logs: [],
 	currentTab: 'recent'
 };
@@ -79,37 +77,7 @@ function gotoScreen(screenName) {
 	document.getElementById(`screen-${screenName}`).classList.add('active');
 }
 
-function findWorkerByEmail(email) {
-	return DEMO_WORKERS.find((w) => w.email.toLowerCase() === email.toLowerCase() && w.activo) || null;
-}
-
-function findWorkerById(workerId) {
-	return DEMO_WORKERS.find((w) => w.id === workerId && w.activo) || null;
-}
-
-function getWorkerStateStorageKey(workerId) {
-	return `worker_state_${workerId}`;
-}
-
-function loadWorkerData(worker) {
-	const savedState = localStorage.getItem(getWorkerStateStorageKey(worker.id));
-	if (savedState) {
-		worker.estado = savedState;
-	}
-
-	const savedLogs = localStorage.getItem(`logs_${worker.id}`);
-	if (savedLogs) {
-		try {
-			state.logs = JSON.parse(savedLogs);
-		} catch {
-			state.logs = [];
-		}
-	} else {
-		state.logs = [];
-	}
-}
-
-function handleLogin(event) {
+async function handleLogin(event) {
 	event.preventDefault();
 	const email = loginEmailEl.value.trim();
 
@@ -118,20 +86,35 @@ function handleLogin(event) {
 		return;
 	}
 
-	const worker = findWorkerByEmail(email);
-	if (!worker) {
-		loginErrorEl.textContent = 'Correo no encontrado o trabajador inactivo';
-		return;
-	}
+	try {
+		const response = await fetch(`${API_BASE}/auth/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email })
+		});
 
-	state.currentWorker = worker;
-	loadWorkerData(worker);
-	localStorage.setItem(STORAGE_KEYS.workerEmail, email);
-	localStorage.setItem(STORAGE_KEYS.workerId, worker.id);
-	loginErrorEl.textContent = '';
-	gotoScreen('dashboard');
-	renderDashboard();
-	startClockUpdate();
+		if (!response.ok) {
+			const error = await response.json();
+			loginErrorEl.textContent = error.error || 'Error al autenticar';
+			return;
+		}
+
+		const data = await response.json();
+		state.authToken = data.token;
+		state.currentWorker = data.worker;
+
+		localStorage.setItem(STORAGE_KEYS.authToken, data.token);
+		localStorage.setItem(STORAGE_KEYS.currentWorker, JSON.stringify(data.worker));
+
+		loginErrorEl.textContent = '';
+		gotoScreen('dashboard');
+		renderDashboard();
+		startClockUpdate();
+		loadLogs();
+	} catch (err) {
+		console.error('Error en login:', err);
+		loginErrorEl.textContent = 'Error de conexión. Verifica el backend.';
+	}
 }
 
 function getStateLabel(value) {
@@ -150,29 +133,62 @@ function getActionsByState(workerState) {
 	if (workerState === 'fuera') return [{ key: 'entrada', label: 'Entrada', nextState: 'en_jornada' }];
 	if (workerState === 'en_jornada') {
 		return [
-			{ key: 'pausa', label: 'Pausa', nextState: 'en_pausa' },
+			{ key: 'pausa_inicio', label: 'Pausa', nextState: 'en_pausa' },
 			{ key: 'salida', label: 'Salida', nextState: 'fuera' }
 		];
 	}
-	return [{ key: 'reanudar', label: 'Reanudar', nextState: 'en_jornada' }];
+	return [{ key: 'pausa_fin', label: 'Reanudar', nextState: 'en_jornada' }];
 }
 
-function recordCheckin(action) {
-	const now = new Date();
-	const log = {
-		id: `log_${Date.now()}`,
-		event: action.key,
-		timestamp: now.toISOString(),
-		device: 'Mobile App'
-	};
+async function recordCheckin(action) {
+	try {
+		// Obtener geolocalización
+		let lat, lon, accuracy_m;
+		try {
+			const position = await new Promise((resolve, reject) => {
+				navigator.geolocation.getCurrentPosition(resolve, reject, {
+					timeout: 5000,
+					enableHighAccuracy: true
+				});
+			});
+			lat = position.coords.latitude;
+			lon = position.coords.longitude;
+			accuracy_m = position.coords.accuracy;
+		} catch (geoErr) {
+			console.warn('Geolocalización no disponible:', geoErr);
+		}
 
-	state.logs.unshift(log);
-	state.currentWorker.estado = action.nextState;
-	localStorage.setItem(`logs_${state.currentWorker.id}`, JSON.stringify(state.logs));
-	localStorage.setItem(getWorkerStateStorageKey(state.currentWorker.id), action.nextState);
-	
-	showToast(`${action.label} registrado correctamente`);
-	renderDashboard();
+		const response = await fetch(`${API_BASE}/me/checkin`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Authorization': `Bearer ${state.authToken}`
+			},
+			body: JSON.stringify({
+				event_type: action.key,
+				source: 'mobile',
+				lat,
+				lon,
+				accuracy_m
+			})
+		});
+
+		if (!response.ok) {
+			const error = await response.json();
+			showToast(error.error || 'Error al registrar fichaje', 'error');
+			return;
+		}
+
+		state.currentWorker.estado = action.nextState;
+		localStorage.setItem(STORAGE_KEYS.currentWorker, JSON.stringify(state.currentWorker));
+
+		showToast(`${action.label} registrado correctamente`);
+		renderDashboard();
+		loadLogs();
+	} catch (err) {
+		console.error('Error al registrar fichaje:', err);
+		showToast('Error de conexión', 'error');
+	}
 }
 
 function renderActionButtons() {
@@ -193,9 +209,8 @@ function buildWorkerQrPayload() {
 	const worker = state.currentWorker;
 	return JSON.stringify({
 		workerId: worker.id,
-		dni: worker.dni,
-		nombre: worker.nombre,
-		empresa: worker.empresa,
+		nombre: worker.full_name,
+		empresa: worker.company_name,
 		ts: Date.now()
 	});
 }
@@ -215,7 +230,7 @@ function renderWorkerQr() {
 }
 
 function renderLogEntry(log) {
-	const date = new Date(log.timestamp);
+	const date = new Date(log.event_at);
 	const row = document.createElement('div');
 	row.className = 'log-entry';
 	row.innerHTML = `
@@ -223,7 +238,7 @@ function renderLogEntry(log) {
 			<span class="log-entry-date">${formatDate(date)}</span>
 			<span class="log-entry-time">${formatTime(date)}</span>
 		</div>
-		<span class="log-entry-event">${log.event}</span>
+		<span class="log-entry-event">${log.event_type}</span>
 	`;
 	return row;
 }
@@ -254,21 +269,38 @@ function renderHistoryLogs() {
 	});
 }
 
+async function loadLogs() {
+	try {
+		const response = await fetch(`${API_BASE}/me/logs`, {
+			headers: { 'Authorization': `Bearer ${state.authToken}` }
+		});
+
+		if (!response.ok) {
+			console.error('Error al cargar logs');
+			return;
+		}
+
+		state.logs = await response.json();
+		renderRecentLogs();
+		renderHistoryLogs();
+	} catch (err) {
+		console.error('Error al cargar logs:', err);
+	}
+}
+
 function renderDashboard() {
 	const worker = state.currentWorker;
 
-	dashboardNameEl.textContent = worker.nombre;
-	dashboardCompanyEl.textContent = worker.empresa;
+	dashboardNameEl.textContent = worker.full_name;
+	dashboardCompanyEl.textContent = worker.company_name;
 
-	currentStatusEl.className = getStateClass(worker.estado);
-	currentStatusEl.textContent = getStateLabel(worker.estado);
+	currentStatusEl.className = getStateClass(worker.estado || 'fuera');
+	currentStatusEl.textContent = getStateLabel(worker.estado || 'fuera');
 
 	currentTimeEl.textContent = formatDateTime(new Date());
 
 	renderActionButtons();
 	renderWorkerQr();
-	renderRecentLogs();
-	renderHistoryLogs();
 }
 
 let clockInterval = null;
@@ -308,21 +340,23 @@ function setupTabs() {
 }
 
 function restoreSession() {
-	const savedWorkerId = localStorage.getItem(STORAGE_KEYS.workerId);
-	const savedEmail = localStorage.getItem(STORAGE_KEYS.workerEmail);
+	const savedToken = localStorage.getItem(STORAGE_KEYS.authToken);
+	const savedWorker = localStorage.getItem(STORAGE_KEYS.currentWorker);
 
-	if (savedWorkerId || savedEmail) {
-		const worker = savedWorkerId ? findWorkerById(savedWorkerId) : findWorkerByEmail(savedEmail);
-		if (worker) {
-			state.currentWorker = worker;
-			loadWorkerData(worker);
-			localStorage.setItem(STORAGE_KEYS.workerId, worker.id);
-			localStorage.setItem(STORAGE_KEYS.workerEmail, worker.email);
+	if (savedToken && savedWorker) {
+		try {
+			state.authToken = savedToken;
+			state.currentWorker = JSON.parse(savedWorker);
 
 			gotoScreen('dashboard');
 			renderDashboard();
 			startClockUpdate();
+			loadLogs();
 			return;
+		} catch (err) {
+			console.error('Error al restaurar sesión:', err);
+			localStorage.removeItem(STORAGE_KEYS.authToken);
+			localStorage.removeItem(STORAGE_KEYS.currentWorker);
 		}
 	}
 
