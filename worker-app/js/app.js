@@ -110,6 +110,7 @@ async function handleLogin(event) {
 		gotoScreen('dashboard');
 		renderDashboard();
 		startClockUpdate();
+		startLogsAutoRefresh();
 		loadLogs();
 	} catch (err) {
 		console.error('Error en login:', err);
@@ -336,6 +337,7 @@ function renderDashboard() {
 }
 
 let clockInterval = null;
+let logsRefreshInterval = null;
 
 function startClockUpdate() {
 	if (clockInterval) return;
@@ -351,6 +353,36 @@ function stopClockUpdate() {
 		clearInterval(clockInterval);
 		clockInterval = null;
 	}
+}
+
+function startLogsAutoRefresh() {
+	if (logsRefreshInterval) return;
+	logsRefreshInterval = setInterval(() => {
+		if (state.authToken && state.currentWorker) {
+			loadLogs();
+		}
+	}, 15000);
+}
+
+function stopLogsAutoRefresh() {
+	if (logsRefreshInterval) {
+		clearInterval(logsRefreshInterval);
+		logsRefreshInterval = null;
+	}
+}
+
+function setupForegroundRefresh() {
+	window.addEventListener('focus', () => {
+		if (state.authToken && state.currentWorker) {
+			loadLogs();
+		}
+	});
+
+	document.addEventListener('visibilitychange', () => {
+		if (!document.hidden && state.authToken && state.currentWorker) {
+			loadLogs();
+		}
+	});
 }
 
 function setupTabs() {
@@ -378,6 +410,7 @@ function clearSessionAndGoLogin(message) {
 	localStorage.removeItem(STORAGE_KEYS.authToken);
 	localStorage.removeItem(STORAGE_KEYS.currentWorker);
 	stopClockUpdate();
+	stopLogsAutoRefresh();
 	gotoScreen('login');
 	if (message) {
 		showToast(message, 'warn');
@@ -396,6 +429,7 @@ function restoreSession() {
 			gotoScreen('dashboard');
 			renderDashboard();
 			startClockUpdate();
+			startLogsAutoRefresh();
 			loadLogs();
 			return;
 		} catch (err) {
@@ -412,6 +446,7 @@ function restoreSession() {
 function boot() {
 	loginFormEl.addEventListener('submit', handleLogin);
 	setupTabs();
+	setupForegroundRefresh();
 	restoreSession();
 }
 
