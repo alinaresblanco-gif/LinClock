@@ -189,6 +189,28 @@ await Promise.all([loadCompanies(), loadWorkers(), loadLogs()]);
 syncWorkerStatesFromLogs();
 }
 
+async function refreshAllDataSilently() {
+try {
+await refreshAllData();
+} catch {
+showToast('No se pudo actualizar datos del servidor', 'warn');
+}
+}
+
+function rerenderCurrentScreen() {
+if (state.currentScreen === '3') renderWorkers();
+if (state.currentScreen === '8') hydrateEditWorkers();
+if (state.currentScreen === '9') {
+hydrateLogFilters();
+renderLogs();
+}
+if (state.currentScreen === '10') {
+hydrateWorkerQrCompanyOptions();
+hydrateWorkerQrWorkerOptions();
+renderWorkerQr();
+}
+}
+
 function gotoScreen(id) {
 state.currentScreen = String(id);
 screenEls.forEach((screen) => {
@@ -206,6 +228,10 @@ if (state.currentScreen === '10') {
 hydrateWorkerQrCompanyOptions();
 hydrateWorkerQrWorkerOptions();
 renderWorkerQr();
+}
+
+if (state.currentScreen === '3' || state.currentScreen === '9' || state.currentScreen === '10') {
+refreshAllDataSilently().then(rerenderCurrentScreen);
 }
 }
 
@@ -282,12 +308,15 @@ function selectedWorker() {
 return state.workers.find((worker) => worker.id === state.selectedWorkerId) || null;
 }
 
-function openQrModal() {
+async function openQrModal() {
 if (!state.selectedCompany) {
 showToast('Selecciona primero una empresa', 'warn');
 gotoScreen(2);
 return;
 }
+
+await refreshAllDataSilently();
+
 qrInputEl.value = '';
 qrStatusEl.textContent = 'Abre la camara y acerca el QR del trabajador.';
 qrModalEl.classList.add('show');
@@ -411,33 +440,34 @@ requestGeo();
 showToast('QR valido. Selecciona Pausa o Salida.');
 }
 
-function submitQrMatch(qrRaw = null, fromCamera = false) {
+async function submitQrMatch(qrRaw = null, fromCamera = false) {
+await refreshAllDataSilently();
+
 const payload = qrRaw ?? qrInputEl.value;
 const match = findWorkerByQr(payload);
 const worker = match.worker;
 
 if (match.companyMismatch) {
 showToast('Empresa del QR no coincide', 'warn');
-return Promise.resolve();
+return;
 }
 
 if (!worker) {
 showToast('QR no valido o trabajador no encontrado', 'error');
-return Promise.resolve();
+return;
 }
 
 if (!worker.activo) {
 showToast('Trabajador inactivo', 'warn');
-return Promise.resolve();
+return;
 }
 
 if (worker.empresa !== state.selectedCompany) {
 showToast('El QR no pertenece a la empresa seleccionada', 'warn');
-return Promise.resolve();
+return;
 }
 
 completeQrFlow(worker, fromCamera ? 'camera' : 'manual');
-return Promise.resolve();
 }
 
 function requestGeo() {
@@ -786,7 +816,9 @@ renderLogs();
 });
 });
 
-document.getElementById('exportFiltered').addEventListener('click', () => {
+document.getElementById('exportFiltered').addEventListener('click', async () => {
+await refreshAllDataSilently();
+
 const company = logCompanyFilterEl.value || 'all';
 const workerId = logWorkerFilterEl.value || 'all';
 const from = fromDateEl.value;
@@ -810,7 +842,9 @@ exportCsv(rows, `fichajes_${Date.now()}.csv`);
 showToast('CSV exportado');
 });
 
-document.getElementById('exportAllReports').addEventListener('click', () => {
+document.getElementById('exportAllReports').addEventListener('click', async () => {
+await refreshAllDataSilently();
+
 if (!state.logs.length) {
 showToast('No hay fichajes aun', 'warn');
 return;
