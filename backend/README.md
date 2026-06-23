@@ -47,6 +47,27 @@ npm start
 
 El servidor escuchará en `http://localhost:3000`
 
+## Despliegue Cloud (Render)
+
+El repositorio ya incluye `render.yaml` en la raiz para despliegue one-click.
+
+Pasos:
+
+1. Entra en Render y conecta tu cuenta de GitHub.
+2. Crea un servicio usando `Blueprint` sobre este repo.
+3. Render detectara `render.yaml` y levantara `linclock-backend`.
+4. Configura estas variables en Render:
+  - `DATABASE_URL`: usa Supabase Transaction Pooler.
+  - `JWT_SECRET`: clave fuerte aleatoria.
+  - `CORS_ORIGIN`: dominios permitidos separados por comas.
+5. Para produccion, deja `REQUIRE_GEO=true`.
+
+Notas:
+
+- El backend sirve tambien el frontend del terminal (`/`) y app trabajador (`/worker-app/`).
+- Cuando despliegues en cloud, usa la URL de Render para acceder desde movil/tablet.
+- `backend/.env` no debe subirse nunca al repo.
+
 ## Endpoints
 
 ### Auth
