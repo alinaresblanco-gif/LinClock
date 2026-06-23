@@ -1,7 +1,7 @@
 'use strict';
 
-// La app usa el mismo origen desde el que se sirve el backend.
-const API_BASE = window.location.origin;
+// API configurable para usar Supabase Functions en produccion y localhost en local.
+const API_BASE = window.LINCLOCK_API_BASE || window.location.origin;
 const REQUIRE_GEO = false; // Cambiar a true al pasar a produccion con HTTPS.
 
 const STORAGE_KEYS = {

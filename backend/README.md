@@ -68,6 +68,50 @@ Notas:
 - Cuando despliegues en cloud, usa la URL de Render para acceder desde movil/tablet.
 - `backend/.env` no debe subirse nunca al repo.
 
+## Despliegue sin pago (Supabase + GitHub Pages)
+
+Si no quieres pagar Render, puedes usar solo servicios gratis:
+
+1. Base de datos en Supabase PostgreSQL (ya creada).
+2. API en Supabase Edge Function (`supabase/functions/linclock-api`).
+3. Frontend en GitHub Pages.
+
+### 1) Configura y despliega la funcion
+
+```bash
+supabase login
+supabase link --project-ref TU_PROJECT_REF
+supabase secrets set \
+  SUPABASE_URL=https://TU_PROJECT_REF.supabase.co \
+  SUPABASE_SERVICE_ROLE_KEY=TU_SERVICE_ROLE_KEY \
+  JWT_SECRET=TU_SECRETO_LARGO \
+  CORS_ORIGIN=https://TU_USUARIO.github.io,http://127.0.0.1:5500 \
+  REQUIRE_GEO=false
+supabase functions deploy linclock-api --no-verify-jwt
+```
+
+URL base de API resultante:
+
+```text
+https://TU_PROJECT_REF.supabase.co/functions/v1/linclock-api
+```
+
+### 2) Configura frontend para apuntar a la API
+
+Edita `js/config.js` y establece:
+
+```js
+window.LINCLOCK_API_BASE = 'https://TU_PROJECT_REF.supabase.co/functions/v1/linclock-api';
+```
+
+### 3) Publica en GitHub Pages
+
+- En GitHub: Settings -> Pages -> Deploy from branch.
+- Selecciona branch `main` y carpeta `/ (root)`.
+- Espera la URL publica de Pages.
+
+Con esto, terminal y app trabajador funcionan sin depender de tu PC y sin facturacion de Render.
+
 ## Endpoints
 
 ### Auth

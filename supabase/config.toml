@@ -1,0 +1,4 @@
+project_id = "linclock"
+
+[functions.linclock-api]
+verify_jwt = false

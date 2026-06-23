@@ -1,7 +1,7 @@
 'use strict';
 
 const ADMIN_PIN = '2580';
-const API_BASE = window.location.origin;
+const API_BASE = window.LINCLOCK_API_BASE || window.location.origin;
 const REQUIRE_GEO = false; // Cambiar a true al pasar a produccion con HTTPS.
 
 const state = {
