@@ -2,6 +2,7 @@
 
 const ADMIN_PIN = '2580';
 const API_BASE = window.location.origin;
+const REQUIRE_GEO = false; // Cambiar a true al pasar a produccion con HTTPS.
 
 const state = {
 currentScreen: '1',
@@ -429,10 +430,12 @@ const actions = actionsByWorkerState(worker.estado);
 
 if (actions.length === 1) {
 closeQrModal();
-		const geoReady = await requestGeo();
-		if (!geoReady) {
-			showToast('No se puede fichar por QR sin ubicacion GPS', 'error');
-			return;
+		if (REQUIRE_GEO) {
+			const geoReady = await requestGeo();
+			if (!geoReady) {
+				showToast('No se puede fichar por QR sin ubicacion GPS', 'error');
+				return;
+			}
 		}
 		registerCheckin(worker, actions[0]);
 showToast(source === 'camera' ? 'QR leido y fichaje realizado' : 'Fichaje realizado');
@@ -544,7 +547,7 @@ actionButtonsEl.appendChild(btn);
 }
 
 async function registerCheckin(worker, action) {
-	if (!state.currentGeo || !Number.isFinite(state.currentGeo.lat) || !Number.isFinite(state.currentGeo.lon)) {
+	if (REQUIRE_GEO && (!state.currentGeo || !Number.isFinite(state.currentGeo.lat) || !Number.isFinite(state.currentGeo.lon))) {
 		showToast('No se puede fichar sin ubicacion GPS', 'error');
 		return;
 	}
@@ -556,9 +559,9 @@ headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({
 worker_id: worker.id,
 event_type: uiActionToDbEvent(action.key),
-lat: state.currentGeo?.lat,
-lon: state.currentGeo?.lon,
-accuracy_m: state.currentGeo?.accuracy_m
+lat: state.currentGeo?.lat ?? null,
+lon: state.currentGeo?.lon ?? null,
+accuracy_m: state.currentGeo?.accuracy_m ?? null
 })
 });
 

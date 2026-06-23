@@ -11,6 +11,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-clave-secreta-super-segura';
+const REQUIRE_GEO = process.env.REQUIRE_GEO !== 'false';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const WEB_ROOT = path.resolve(__dirname, '..');
@@ -193,7 +194,7 @@ app.post('/me/checkin', verifyToken, async (req, res) => {
 			return res.status(400).json({ error: 'source requerido (terminal|mobile)' });
 		}
 
-		if (!isValidCoordinate(lat, -90, 90) || !isValidCoordinate(lon, -180, 180)) {
+		if (REQUIRE_GEO && (!isValidCoordinate(lat, -90, 90) || !isValidCoordinate(lon, -180, 180))) {
 			return res.status(400).json({ error: 'Ubicacion GPS obligatoria y valida (lat/lon)' });
 		}
 
@@ -429,7 +430,7 @@ app.post('/checkins', async (req, res) => {
 			return res.status(400).json({ error: 'worker_id y event_type requeridos' });
 		}
 
-		if (!isValidCoordinate(lat, -90, 90) || !isValidCoordinate(lon, -180, 180)) {
+		if (REQUIRE_GEO && (!isValidCoordinate(lat, -90, 90) || !isValidCoordinate(lon, -180, 180))) {
 			return res.status(400).json({ error: 'Ubicacion GPS obligatoria y valida (lat/lon)' });
 		}
 
@@ -471,6 +472,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
 	console.log(`🚀 Backend LinClock escuchando en http://localhost:${PORT}`);
 	console.log(`📊 Health check: http://localhost:${PORT}/health`);
+	console.log(`📍 Geolocalizacion obligatoria: ${REQUIRE_GEO ? 'SI' : 'NO (temporal)'}`);
 });
 
 // Graceful shutdown

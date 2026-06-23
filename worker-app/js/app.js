@@ -2,6 +2,7 @@
 
 // La app usa el mismo origen desde el que se sirve el backend.
 const API_BASE = window.location.origin;
+const REQUIRE_GEO = false; // Cambiar a true al pasar a produccion con HTTPS.
 
 const STORAGE_KEYS = {
 	authToken: 'authToken',
@@ -172,8 +173,11 @@ async function recordCheckin(action) {
 		}
 
 		if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-			showToast(geoWarningMessage || 'No se puede fichar sin ubicacion GPS', 'error');
-			return;
+			if (REQUIRE_GEO) {
+				showToast(geoWarningMessage || 'No se puede fichar sin ubicacion GPS', 'error');
+				return;
+			}
+			showToast(geoWarningMessage || 'Fichaje guardado sin ubicacion (modo temporal)', 'warn');
 		}
 
 		const response = await fetch(`${API_BASE}/me/checkin`, {
