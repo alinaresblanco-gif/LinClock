@@ -3,12 +3,17 @@ import pg from 'pg';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'tu-clave-secreta-super-segura';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const WEB_ROOT = path.resolve(__dirname, '..');
 
 // Pool de conexiones PostgreSQL
 const pool = new pg.Pool({
@@ -50,6 +55,24 @@ function verifyToken(req, res, next) {
 // Health check
 app.get('/health', (req, res) => {
 	res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================================
+// STATIC APP
+// ============================================================
+
+app.use('/css', express.static(path.join(WEB_ROOT, 'css')));
+app.use('/js', express.static(path.join(WEB_ROOT, 'js')));
+app.use('/imagenes', express.static(path.join(WEB_ROOT, 'imagenes')));
+app.use('/iconos', express.static(path.join(WEB_ROOT, 'iconos')));
+app.use('/worker-app', express.static(path.join(WEB_ROOT, 'worker-app')));
+
+app.get('/', (req, res) => {
+	res.sendFile(path.join(WEB_ROOT, 'index.html'));
+});
+
+app.get('/manifest.json', (req, res) => {
+	res.sendFile(path.join(WEB_ROOT, 'manifest.json'));
 });
 
 // ============================================================

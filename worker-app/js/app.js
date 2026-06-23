@@ -1,8 +1,7 @@
 'use strict';
 
-// URL base del backend
-const API_BASE = 'http://localhost:3000';
-// Para producción, cambiar a: 'https://tu-backend.com'
+// La app usa el mismo origen desde el que se sirve el backend.
+const API_BASE = window.location.origin;
 
 const STORAGE_KEYS = {
 	authToken: 'authToken',
@@ -193,7 +192,7 @@ async function recordCheckin(action) {
 
 function renderActionButtons() {
 	const worker = state.currentWorker;
-	const actions = getActionsByState(worker.estado);
+	const actions = getActionsByState(worker.estado || 'fuera');
 
 	actionButtonsEl.innerHTML = '';
 	actions.forEach((action) => {
