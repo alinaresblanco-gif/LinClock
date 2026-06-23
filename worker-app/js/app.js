@@ -13,7 +13,9 @@ const state = {
 	currentWorker: null,
 	authToken: null,
 	logs: [],
-	currentTab: 'recent'
+	currentTab: 'recent',
+	recentVisibleCount: 10,
+	historyVisibleCount: 20
 };
 
 const screenLoginEl = document.getElementById('screen-login');
@@ -33,6 +35,7 @@ const historyViewEl = document.getElementById('historyView');
 const tabBtnsEl = document.querySelectorAll('.tab-btn');
 const refreshLogsBtnEl = document.getElementById('refreshLogsBtn');
 const logsStatusEl = document.getElementById('logsStatus');
+const loadMoreLogsBtnEl = document.getElementById('loadMoreLogsBtn');
 
 const toastEl = document.getElementById('toast');
 
@@ -42,6 +45,15 @@ function setLogsStatus(message) {
 	if (logsStatusEl) {
 		logsStatusEl.textContent = message;
 	}
+}
+
+function updateLoadMoreVisibility() {
+	if (!loadMoreLogsBtnEl) return;
+	if (state.currentTab === 'recent') {
+		loadMoreLogsBtnEl.style.display = state.logs.length > state.recentVisibleCount ? 'inline-block' : 'none';
+		return;
+	}
+	loadMoreLogsBtnEl.style.display = state.logs.length > state.historyVisibleCount ? 'inline-block' : 'none';
 }
 
 function formatDateTime(date) {
@@ -275,29 +287,35 @@ function renderLogEntry(log) {
 }
 
 function renderRecentLogs() {
-	const recent = state.logs.slice(0, 10);
+	const recent = state.logs.slice(0, state.recentVisibleCount);
 
 	recentLogsEl.innerHTML = '';
 	if (!recent.length) {
 		recentLogsEl.innerHTML = '<div class="logs-empty">Sin fichajes registrados</div>';
+		updateLoadMoreVisibility();
 		return;
 	}
 
 	recent.forEach((log) => {
 		recentLogsEl.appendChild(renderLogEntry(log));
 	});
+
+	updateLoadMoreVisibility();
 }
 
 function renderHistoryLogs() {
 	historyViewEl.innerHTML = '';
 	if (!state.logs.length) {
 		historyViewEl.innerHTML = '<div class="logs-empty">Sin fichajes registrados</div>';
+		updateLoadMoreVisibility();
 		return;
 	}
 
-	state.logs.forEach((log) => {
+	state.logs.slice(0, state.historyVisibleCount).forEach((log) => {
 		historyViewEl.appendChild(renderLogEntry(log));
 	});
+
+	updateLoadMoreVisibility();
 }
 
 async function loadLogs() {
@@ -316,24 +334,22 @@ async function loadLogs() {
 			state.logs = [];
 			renderRecentLogs();
 			renderHistoryLogs();
-			setLogsStatus(`Error cargando registros (${response.status})`);
+			showToast(`Error cargando registros (${response.status})`, 'warn');
 			return;
 		}
 
 		state.logs = await response.json();
+		state.recentVisibleCount = 10;
+		state.historyVisibleCount = 20;
 		renderRecentLogs();
 		renderHistoryLogs();
-		const preview = state.logs.slice(0, 2).map((log) => {
-			const dt = new Date(log.event_at);
-			return `${log.event_type} ${formatDate(dt)} ${formatTime(dt)}`;
-		}).join(' | ');
-		setLogsStatus(`Registros: ${state.logs.length}${preview ? ` | ${preview}` : ''}`);
+		setLogsStatus('');
 	} catch (err) {
 		console.error('Error al cargar logs:', err);
 		state.logs = [];
 		renderRecentLogs();
 		renderHistoryLogs();
-		setLogsStatus('Error de conexión al cargar registros');
+		showToast('Error de conexión al cargar registros', 'warn');
 	}
 }
 
@@ -405,15 +421,18 @@ function setupTabs() {
 	tabBtnsEl.forEach((btn) => {
 		btn.addEventListener('click', () => {
 			const tab = btn.dataset.tab;
+			state.currentTab = tab;
 			tabBtnsEl.forEach((b) => b.classList.remove('active'));
 			btn.classList.add('active');
 
 			if (tab === 'recent') {
 				recentLogsEl.style.display = 'block';
 				historyViewEl.style.display = 'none';
+				renderRecentLogs();
 			} else {
 				recentLogsEl.style.display = 'none';
 				historyViewEl.style.display = 'block';
+				renderHistoryLogs();
 			}
 		});
 	});
@@ -468,6 +487,17 @@ function boot() {
 				return;
 			}
 			loadLogs();
+		});
+	}
+	if (loadMoreLogsBtnEl) {
+		loadMoreLogsBtnEl.addEventListener('click', () => {
+			if (state.currentTab === 'recent') {
+				state.recentVisibleCount += 10;
+				renderRecentLogs();
+				return;
+			}
+			state.historyVisibleCount += 20;
+			renderHistoryLogs();
 		});
 	}
 	setupTabs();

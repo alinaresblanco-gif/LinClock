@@ -336,7 +336,7 @@ body {
 
 .logs-toolbar {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-start;
 	align-items: center;
 	gap: 0.6rem;
 	background: var(--bg-card);
@@ -350,6 +350,12 @@ body {
 	font-size: 0.9rem;
 	font-weight: 700;
 	color: var(--text-muted);
+}
+
+.logs-actions {
+	display: flex;
+	justify-content: center;
+	padding-top: 0.3rem;
 }
 
 .logs-view {

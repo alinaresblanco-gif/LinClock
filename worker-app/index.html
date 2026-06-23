@@ -13,7 +13,7 @@
 	<link rel="icon" href="../imagenes/logo_LinClock.png" type="image/png">
 	<link rel="apple-touch-icon" href="../imagenes/logo_LinClock.png">
 	<link rel="manifest" href="manifest.json">
-	<link rel="stylesheet" href="css/style.css?v=20260623-6">
+	<link rel="stylesheet" href="css/style.css?v=20260623-7">
 </head>
 <body>
 	<main class="app-worker">
@@ -74,19 +74,21 @@
 
 				<div class="logs-toolbar">
 					<button id="refreshLogsBtn" class="btn btn-ghost btn-sm" type="button">Recargar registros</button>
-					<p id="logsStatus" class="logs-status">Registros: 0</p>
 				</div>
 
 				<div id="recentLogs" class="logs-view"></div>
 				<div id="historyView" class="logs-view" style="display: none;"></div>
+				<div class="logs-actions">
+					<button id="loadMoreLogsBtn" class="btn btn-ghost btn-sm" type="button" style="display: none;">Cargar más</button>
+				</div>
 			</div>
 		</section>
 	</main>
 
 	<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-	<script src="../js/config.js?v=20260623-6"></script>
+	<script src="../js/config.js?v=20260623-7"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-	<script src="js/app.js?v=20260623-6"></script>
+	<script src="js/app.js?v=20260623-7"></script>
 </body>
 </html>
