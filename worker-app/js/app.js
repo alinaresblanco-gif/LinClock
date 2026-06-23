@@ -2,7 +2,7 @@
 
 // API configurable para usar Supabase Functions en produccion y localhost en local.
 const API_BASE = window.LINCLOCK_API_BASE || window.location.origin;
-const REQUIRE_GEO = false; // Cambiar a true al pasar a produccion con HTTPS.
+const REQUIRE_GEO = true; // Produccion: GPS obligatorio en cada fichaje.
 
 const STORAGE_KEYS = {
 	authToken: 'authToken',
@@ -298,7 +298,14 @@ async function loadLogs() {
 		});
 
 		if (!response.ok) {
+			if (response.status === 401 || response.status === 403) {
+				clearSessionAndGoLogin('Sesion caducada. Vuelve a iniciar sesion.');
+				return;
+			}
 			console.error('Error al cargar logs');
+			state.logs = [];
+			renderRecentLogs();
+			renderHistoryLogs();
 			return;
 		}
 
@@ -307,6 +314,9 @@ async function loadLogs() {
 		renderHistoryLogs();
 	} catch (err) {
 		console.error('Error al cargar logs:', err);
+		state.logs = [];
+		renderRecentLogs();
+		renderHistoryLogs();
 	}
 }
 
@@ -359,6 +369,19 @@ function setupTabs() {
 			}
 		});
 	});
+}
+
+function clearSessionAndGoLogin(message) {
+	state.authToken = null;
+	state.currentWorker = null;
+	state.logs = [];
+	localStorage.removeItem(STORAGE_KEYS.authToken);
+	localStorage.removeItem(STORAGE_KEYS.currentWorker);
+	stopClockUpdate();
+	gotoScreen('login');
+	if (message) {
+		showToast(message, 'warn');
+	}
 }
 
 function restoreSession() {
