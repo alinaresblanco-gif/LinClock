@@ -52,6 +52,11 @@ function verifyToken(req, res, next) {
 	}
 }
 
+function isValidCoordinate(value, min, max) {
+	const num = Number(value);
+	return Number.isFinite(num) && num >= min && num <= max;
+}
+
 // Health check
 app.get('/health', (req, res) => {
 	res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -188,6 +193,10 @@ app.post('/me/checkin', verifyToken, async (req, res) => {
 			return res.status(400).json({ error: 'source requerido (terminal|mobile)' });
 		}
 
+		if (!isValidCoordinate(lat, -90, 90) || !isValidCoordinate(lon, -180, 180)) {
+			return res.status(400).json({ error: 'Ubicacion GPS obligatoria y valida (lat/lon)' });
+		}
+
 		// Obtener company_id del trabajador
 		const workerResult = await pool.query(
 			'select company_id from public.workers where id = $1',
@@ -205,7 +214,7 @@ app.post('/me/checkin', verifyToken, async (req, res) => {
 			 (worker_id, company_id, source, event_type, event_at, lat, lon, accuracy_m, qr_payload, tz)
 			 values ($1, $2, $3, $4, now(), $5, $6, $7, $8, $9)
 			 returning id, worker_id, event_type, event_at, source`,
-			[req.workerId, companyId, source, event_type, lat, lon, accuracy_m, 
+			[req.workerId, companyId, source, event_type, Number(lat), Number(lon), accuracy_m, 
 			 qr_payload ? JSON.stringify(qr_payload) : null, 'Europe/Madrid']
 		);
 
@@ -420,6 +429,10 @@ app.post('/checkins', async (req, res) => {
 			return res.status(400).json({ error: 'worker_id y event_type requeridos' });
 		}
 
+		if (!isValidCoordinate(lat, -90, 90) || !isValidCoordinate(lon, -180, 180)) {
+			return res.status(400).json({ error: 'Ubicacion GPS obligatoria y valida (lat/lon)' });
+		}
+
 		// Obtener company_id del trabajador
 		const workerResult = await pool.query(
 			'select company_id from public.workers where id = $1',
@@ -438,7 +451,7 @@ app.post('/checkins', async (req, res) => {
 			 values ($1, $2, $3, $4, $5, now(), $6, $7, $8, $9, $10)
 			 returning id, worker_id, event_type, event_at, source`,
 			[worker_id, companyId, terminal_id || null, 'terminal', event_type, 
-			 lat, lon, accuracy_m, qr_payload ? JSON.stringify(qr_payload) : null, 'Europe/Madrid']
+			 Number(lat), Number(lon), accuracy_m, qr_payload ? JSON.stringify(qr_payload) : null, 'Europe/Madrid']
 		);
 
 		res.status(201).json(result.rows[0]);

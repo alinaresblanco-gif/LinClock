@@ -423,13 +423,18 @@ qrScannerActive = false;
 }
 }
 
-function completeQrFlow(worker, source = 'manual') {
+async function completeQrFlow(worker, source = 'manual') {
 state.selectedWorkerId = worker.id;
 const actions = actionsByWorkerState(worker.estado);
 
 if (actions.length === 1) {
 closeQrModal();
-registerCheckin(worker, actions[0]);
+		const geoReady = await requestGeo();
+		if (!geoReady) {
+			showToast('No se puede fichar por QR sin ubicacion GPS', 'error');
+			return;
+		}
+		registerCheckin(worker, actions[0]);
 showToast(source === 'camera' ? 'QR leido y fichaje realizado' : 'Fichaje realizado');
 return;
 }
@@ -467,7 +472,7 @@ showToast('El QR no pertenece a la empresa seleccionada', 'warn');
 return;
 }
 
-completeQrFlow(worker, fromCamera ? 'camera' : 'manual');
+await completeQrFlow(worker, fromCamera ? 'camera' : 'manual');
 }
 
 function requestGeo() {
@@ -477,27 +482,31 @@ geoCoordsEl.textContent = '';
 if (!navigator.geolocation) {
 geoStatusEl.textContent = 'No disponible en este dispositivo';
 showToast('Geolocalizacion no disponible', 'warn');
-return;
+		return Promise.resolve(false);
 }
 
-navigator.geolocation.getCurrentPosition(
-(pos) => {
-const lat = pos.coords.latitude;
-const lng = pos.coords.longitude;
-state.currentGeo = {
-lat,
-lon: lng,
-accuracy_m: pos.coords.accuracy
-};
-geoStatusEl.textContent = 'Detectada';
-geoCoordsEl.textContent = `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`;
-},
-() => {
-geoStatusEl.textContent = 'Sin permisos o error de GPS';
-showToast('Geolocalizacion no disponible', 'warn');
-},
-{ enableHighAccuracy: true, timeout: 4500 }
-);
+	return new Promise((resolve) => {
+		navigator.geolocation.getCurrentPosition(
+			(pos) => {
+				const lat = pos.coords.latitude;
+				const lng = pos.coords.longitude;
+				state.currentGeo = {
+					lat,
+					lon: lng,
+					accuracy_m: pos.coords.accuracy
+				};
+				geoStatusEl.textContent = 'Detectada';
+				geoCoordsEl.textContent = `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`;
+				resolve(true);
+			},
+			() => {
+				geoStatusEl.textContent = 'Sin permisos o error de GPS';
+				showToast('Geolocalizacion no disponible', 'warn');
+				resolve(false);
+			},
+			{ enableHighAccuracy: true, timeout: 7000 }
+		);
+	});
 }
 
 function actionsByWorkerState(workerState) {
@@ -535,6 +544,11 @@ actionButtonsEl.appendChild(btn);
 }
 
 async function registerCheckin(worker, action) {
+	if (!state.currentGeo || !Number.isFinite(state.currentGeo.lat) || !Number.isFinite(state.currentGeo.lon)) {
+		showToast('No se puede fichar sin ubicacion GPS', 'error');
+		return;
+	}
+
 try {
 await apiFetch('/checkins', {
 method: 'POST',

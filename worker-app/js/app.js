@@ -143,18 +143,37 @@ async function recordCheckin(action) {
 	try {
 		// Obtener geolocalización
 		let lat, lon, accuracy_m;
+		let geoWarningMessage = '';
 		try {
-			const position = await new Promise((resolve, reject) => {
-				navigator.geolocation.getCurrentPosition(resolve, reject, {
-					timeout: 5000,
-					enableHighAccuracy: true
+			if (!('geolocation' in navigator)) {
+				geoWarningMessage = 'Este dispositivo no soporta geolocalizacion.';
+			} else if (!window.isSecureContext) {
+				geoWarningMessage = 'Para guardar ubicacion usa HTTPS (o localhost).';
+			} else {
+				const position = await new Promise((resolve, reject) => {
+					navigator.geolocation.getCurrentPosition(resolve, reject, {
+						timeout: 7000,
+						enableHighAccuracy: true
+					});
 				});
-			});
-			lat = position.coords.latitude;
-			lon = position.coords.longitude;
-			accuracy_m = position.coords.accuracy;
+				lat = position.coords.latitude;
+				lon = position.coords.longitude;
+				accuracy_m = position.coords.accuracy;
+			}
 		} catch (geoErr) {
 			console.warn('Geolocalización no disponible:', geoErr);
+			if (geoErr && geoErr.code === 1) {
+				geoWarningMessage = 'Permiso de ubicacion denegado en el movil.';
+			} else if (geoErr && geoErr.code === 3) {
+				geoWarningMessage = 'No se pudo obtener GPS a tiempo.';
+			} else {
+				geoWarningMessage = 'No se pudo capturar la ubicacion.';
+			}
+		}
+
+		if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+			showToast(geoWarningMessage || 'No se puede fichar sin ubicacion GPS', 'error');
+			return;
 		}
 
 		const response = await fetch(`${API_BASE}/me/checkin`, {
