@@ -220,6 +220,157 @@ app.post('/me/checkin', verifyToken, async (req, res) => {
 // TERMINAL ENDPOINTS (públicos, para tablet)
 // ============================================================
 
+// GET /companies - Obtener empresas activas
+app.get('/companies', async (req, res) => {
+	try {
+		const result = await pool.query(
+			`select id, name, cif, is_active
+			 from public.companies
+			 where is_active = true
+			 order by name asc`
+		);
+
+		res.json(result.rows);
+	} catch (err) {
+		console.error('Error al obtener empresas:', err);
+		res.status(500).json({ error: 'Error al obtener empresas' });
+	}
+});
+
+// GET /attendance-events - Obtener fichajes para informes del terminal
+app.get('/attendance-events', async (req, res) => {
+	try {
+		const companyId = req.query.company_id || null;
+		const workerId = req.query.worker_id || null;
+		const from = req.query.from || null;
+		const to = req.query.to || null;
+		const limit = parseInt(req.query.limit || '2000', 10);
+
+		const result = await pool.query(
+			`select ae.id,
+					  ae.worker_id,
+					  w.full_name as worker_name,
+					  c.name as company_name,
+					  ae.event_type,
+					  ae.source,
+					  ae.event_at,
+					  ae.lat,
+					  ae.lon,
+					  ae.accuracy_m,
+					  ae.created_at
+			 from public.attendance_events ae
+			 join public.workers w on w.id = ae.worker_id
+			 join public.companies c on c.id = ae.company_id
+			 where ($1::uuid is null or ae.company_id = $1)
+			   and ($2::uuid is null or ae.worker_id = $2)
+			   and ($3::timestamptz is null or ae.event_at >= $3)
+			   and ($4::timestamptz is null or ae.event_at <= $4)
+			 order by ae.event_at desc
+			 limit $5`,
+			[companyId, workerId, from, to, limit]
+		);
+
+		res.json(result.rows);
+	} catch (err) {
+		console.error('Error al obtener fichajes:', err);
+		res.status(500).json({ error: 'Error al obtener fichajes' });
+	}
+});
+
+// GET /workers - Obtener trabajadores (opcionalmente por empresa)
+app.get('/workers', async (req, res) => {
+	try {
+		const companyId = req.query.company_id || null;
+
+		const result = await pool.query(
+			`select w.id,
+					  w.full_name,
+					  w.dni,
+					  w.email,
+					  w.company_id,
+					  c.name as company_name,
+					  w.is_active,
+					  w.created_at,
+					  w.updated_at
+			 from public.workers w
+			 join public.companies c on c.id = w.company_id
+			 where ($1::uuid is null or w.company_id = $1)
+			 order by w.full_name asc`,
+			[companyId]
+		);
+
+		res.json(result.rows);
+	} catch (err) {
+		console.error('Error al obtener trabajadores:', err);
+		res.status(500).json({ error: 'Error al obtener trabajadores' });
+	}
+});
+
+// POST /workers - Crear trabajador desde RRHH
+app.post('/workers', async (req, res) => {
+	try {
+		const { company_id, full_name, dni, email, is_active, phone, employee_code } = req.body;
+
+		if (!company_id || !full_name || !dni || !email) {
+			return res.status(400).json({ error: 'company_id, full_name, dni y email son requeridos' });
+		}
+
+		const result = await pool.query(
+			`insert into public.workers
+			 (company_id, full_name, dni, email, is_active, phone, employee_code)
+			 values ($1, $2, $3, lower($4), coalesce($5, true), $6, $7)
+			 returning id, full_name, dni, email, company_id, is_active`,
+			[company_id, full_name.trim(), dni.trim().toUpperCase(), email.trim(), is_active, phone || null, employee_code || null]
+		);
+
+		res.status(201).json(result.rows[0]);
+	} catch (err) {
+		console.error('Error al crear trabajador:', err);
+		res.status(500).json({ error: 'Error al crear trabajador' });
+	}
+});
+
+// PATCH /workers/:workerId - Editar trabajador desde RRHH
+app.patch('/workers/:workerId', async (req, res) => {
+	try {
+		const { workerId } = req.params;
+		const { company_id, full_name, dni, email, is_active, phone, employee_code } = req.body;
+
+		const result = await pool.query(
+			`update public.workers
+			 set company_id = coalesce($2, company_id),
+				 full_name = coalesce($3, full_name),
+				 dni = coalesce($4, dni),
+				 email = coalesce(lower($5), email),
+				 is_active = coalesce($6, is_active),
+				 phone = coalesce($7, phone),
+				 employee_code = coalesce($8, employee_code),
+				 updated_at = now()
+			 where id = $1
+			 returning id, full_name, dni, email, company_id, is_active`,
+			[
+				workerId,
+				company_id || null,
+				full_name ? full_name.trim() : null,
+				dni ? dni.trim().toUpperCase() : null,
+				email ? email.trim() : null,
+				typeof is_active === 'boolean' ? is_active : null,
+				phone || null,
+				employee_code || null
+			]
+		);
+
+		if (!result.rows.length) {
+			return res.status(404).json({ error: 'Trabajador no encontrado' });
+		}
+
+		res.json(result.rows[0]);
+	} catch (err) {
+		console.error('Error al editar trabajador:', err);
+		res.status(500).json({ error: 'Error al editar trabajador' });
+	}
+});
+
 // GET /workers/:companyId - Obtener trabajadores de una empresa
 app.get('/workers/:companyId', async (req, res) => {
 	try {
