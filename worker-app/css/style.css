@@ -329,6 +329,24 @@ body {
 	color: #fff;
 }
 
+.logs-toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 0.6rem;
+	background: var(--bg-card);
+	border-radius: var(--radius-md);
+	padding: 0.7rem 0.8rem;
+	box-shadow: var(--shadow-sm);
+}
+
+.logs-status {
+	margin: 0;
+	font-size: 0.9rem;
+	font-weight: 700;
+	color: var(--text-muted);
+}
+
 .logs-view {
 	background: var(--bg-card);
 	border-radius: var(--radius-md);

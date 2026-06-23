@@ -31,10 +31,18 @@ const workerQrCodeEl = document.getElementById('workerQrCode');
 const recentLogsEl = document.getElementById('recentLogs');
 const historyViewEl = document.getElementById('historyView');
 const tabBtnsEl = document.querySelectorAll('.tab-btn');
+const refreshLogsBtnEl = document.getElementById('refreshLogsBtn');
+const logsStatusEl = document.getElementById('logsStatus');
 
 const toastEl = document.getElementById('toast');
 
 let qrInstance = null;
+
+function setLogsStatus(message) {
+	if (logsStatusEl) {
+		logsStatusEl.textContent = message;
+	}
+}
 
 function formatDateTime(date) {
 	return new Intl.DateTimeFormat('es-ES', {
@@ -294,6 +302,7 @@ function renderHistoryLogs() {
 
 async function loadLogs() {
 	try {
+		setLogsStatus('Cargando registros...');
 		const response = await fetch(`${API_BASE}/me/logs`, {
 			headers: { 'Authorization': `Bearer ${state.authToken}` }
 		});
@@ -307,17 +316,20 @@ async function loadLogs() {
 			state.logs = [];
 			renderRecentLogs();
 			renderHistoryLogs();
+			setLogsStatus(`Error cargando registros (${response.status})`);
 			return;
 		}
 
 		state.logs = await response.json();
 		renderRecentLogs();
 		renderHistoryLogs();
+		setLogsStatus(`Registros: ${state.logs.length}`);
 	} catch (err) {
 		console.error('Error al cargar logs:', err);
 		state.logs = [];
 		renderRecentLogs();
 		renderHistoryLogs();
+		setLogsStatus('Error de conexión al cargar registros');
 	}
 }
 
@@ -445,6 +457,15 @@ function restoreSession() {
 
 function boot() {
 	loginFormEl.addEventListener('submit', handleLogin);
+	if (refreshLogsBtnEl) {
+		refreshLogsBtnEl.addEventListener('click', () => {
+			if (!state.authToken) {
+				showToast('Inicia sesion primero', 'warn');
+				return;
+			}
+			loadLogs();
+		});
+	}
 	setupTabs();
 	setupForegroundRefresh();
 	restoreSession();
