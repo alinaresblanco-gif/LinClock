@@ -323,7 +323,11 @@ async function loadLogs() {
 		state.logs = await response.json();
 		renderRecentLogs();
 		renderHistoryLogs();
-		setLogsStatus(`Registros: ${state.logs.length}`);
+		const preview = state.logs.slice(0, 2).map((log) => {
+			const dt = new Date(log.event_at);
+			return `${log.event_type} ${formatDate(dt)} ${formatTime(dt)}`;
+		}).join(' | ');
+		setLogsStatus(`Registros: ${state.logs.length}${preview ? ` | ${preview}` : ''}`);
 	} catch (err) {
 		console.error('Error al cargar logs:', err);
 		state.logs = [];
