@@ -455,10 +455,12 @@ stream.getTracks().forEach((track) => track.stop());
 qrScanner = qrScanner || new Html5Qrcode('qrReader');
 if (qrScannerActive) return;
 
-const onDecoded = (decodedText) => {
+const onDecoded = async (decodedText) => {
 if (qrReadLock) return;
 qrReadLock = true;
-submitQrMatch(decodedText, true).finally(() => {
+qrInputEl.value = decodedText;
+qrStatusEl.textContent = 'QR leido. Validando trabajador...';
+await submitQrMatch(decodedText, true).finally(() => {
 setTimeout(() => { qrReadLock = false; }, 500);
 });
 };
@@ -551,6 +553,7 @@ showToast('QR valido. Selecciona Pausa o Salida.');
 }
 
 async function submitQrMatch(qrRaw = null, fromCamera = false) {
+qrStatusEl.textContent = 'Validando trabajador...';
 await refreshAllDataSilently();
 
 const payload = qrRaw ?? qrInputEl.value;
@@ -558,26 +561,32 @@ const match = findWorkerByQr(payload);
 const worker = match.worker;
 
 if (match.companyMismatch) {
+qrStatusEl.textContent = 'Empresa del QR no coincide con la seleccionada.';
 showToast('Empresa del QR no coincide', 'warn');
-return;
+return false;
 }
 
 if (!worker) {
+qrStatusEl.textContent = 'QR no valido o trabajador no encontrado.';
 showToast('QR no valido o trabajador no encontrado', 'error');
-return;
+return false;
 }
 
 if (!worker.activo) {
+qrStatusEl.textContent = 'Trabajador inactivo.';
 showToast('Trabajador inactivo', 'warn');
-return;
+return false;
 }
 
 if (worker.empresa !== state.selectedCompany) {
+qrStatusEl.textContent = 'El QR pertenece a otra empresa.';
 showToast('El QR no pertenece a la empresa seleccionada', 'warn');
-return;
+return false;
 }
 
 await completeQrFlow(worker, fromCamera ? 'camera' : 'manual');
+qrStatusEl.textContent = 'Trabajador validado. Registrando fichaje...';
+return true;
 }
 
 function requestGeo() {
