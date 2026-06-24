@@ -392,12 +392,6 @@ stream.getTracks().forEach((track) => track.stop());
 }
 }
 
-const cameras = await Html5Qrcode.getCameras();
-if (!cameras || !cameras.length) {
-qrStatusEl.textContent = 'No se detecta camara. Usa entrada manual.';
-return;
-}
-
 qrScanner = qrScanner || new Html5Qrcode('qrReader');
 if (qrScannerActive) return;
 
@@ -411,42 +405,52 @@ setTimeout(() => { qrReadLock = false; }, 500);
 
 const scannerConfig = { fps: 10, qrbox: { width: 220, height: 220 } };
 
-const startAttempts = [];
-// 1) Intentar frontal por constraint (lo pedido para tablet).
-startAttempts.push({ cameraConfig: { facingMode: 'user' }, label: 'frontal' });
-// 2) Intentar frontal por id si existe etiqueta.
+const startAttempts = [
+{ cameraConfig: { facingMode: 'user' }, label: 'frontal' },
+{ cameraConfig: { facingMode: 'environment' }, label: 'trasera' }
+];
+
+// En algunas tablets getCameras() falla, pero start con facingMode si funciona.
+// Solo intentamos enumeracion como fallback extra.
+try {
+const cameras = await Html5Qrcode.getCameras();
+if (cameras && cameras.length) {
 const frontByLabel = cameras.find((cam) => /front|user|frontal|delantera/i.test(cam.label));
 if (frontByLabel) {
 startAttempts.push({ cameraConfig: frontByLabel.id, label: 'frontal' });
 }
-// 3) Fallback a trasera.
 const rearByLabel = cameras.find((cam) => /rear|back|trasera|posterior|environment/i.test(cam.label));
 if (rearByLabel) {
 startAttempts.push({ cameraConfig: rearByLabel.id, label: 'trasera' });
 }
-// 4) Ultimo fallback: primera camara disponible.
 startAttempts.push({ cameraConfig: cameras[0].id, label: 'disponible' });
+}
+} catch {
+// Ignorar; seguimos con facingMode.
+}
 
 let started = false;
+let lastError = '';
 for (const attempt of startAttempts) {
 try {
 await qrScanner.start(attempt.cameraConfig, scannerConfig, onDecoded, () => {});
 started = true;
 qrStatusEl.textContent = `Camara ${attempt.label} activa. Escaneando QR...`;
 break;
-} catch {
-// Probar siguiente opcion.
+} catch (err) {
+lastError = err && err.message ? err.message : String(err || 'error desconocido');
 }
 }
 
 if (!started) {
-qrStatusEl.textContent = 'No se pudo abrir la camara. Usa entrada manual.';
+qrStatusEl.textContent = `No se pudo abrir la camara. ${lastError || ''} Usa entrada manual.`;
 return;
 }
 
 qrScannerActive = true;
-} catch {
-qrStatusEl.textContent = 'No se pudo abrir la camara. Usa entrada manual.';
+} catch (err) {
+const detail = err && err.message ? err.message : '';
+qrStatusEl.textContent = `No se pudo abrir la camara. ${detail} Usa entrada manual.`;
 }
 }
 
