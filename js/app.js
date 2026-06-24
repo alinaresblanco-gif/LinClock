@@ -316,10 +316,11 @@ gotoScreen(2);
 return;
 }
 
-await refreshAllDataSilently();
+// No bloquear el gesto del usuario con awaits antes de abrir camara (especialmente en iOS/iPadOS).
+refreshAllDataSilently();
 
 qrInputEl.value = '';
-qrStatusEl.textContent = 'Abre la camara y acerca el QR del trabajador.';
+qrStatusEl.textContent = 'Abriendo camara frontal...';
 qrModalEl.classList.add('show');
 qrModalEl.setAttribute('aria-hidden', 'false');
 setTimeout(() => qrInputEl.focus(), 50);
@@ -381,32 +382,69 @@ return;
 }
 
 try {
+// Forzar el prompt de permisos en algunos navegadores moviles antes de iniciar html5-qrcode.
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+try {
+const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+stream.getTracks().forEach((track) => track.stop());
+} catch {
+// Continuar con los fallbacks de html5-qrcode.
+}
+}
+
 const cameras = await Html5Qrcode.getCameras();
 if (!cameras || !cameras.length) {
 qrStatusEl.textContent = 'No se detecta camara. Usa entrada manual.';
 return;
 }
 
-const rear = cameras.find((cam) => /rear|back|trasera/i.test(cam.label));
-const cameraId = (rear || cameras[0]).id;
 qrScanner = qrScanner || new Html5Qrcode('qrReader');
 if (qrScannerActive) return;
 
-await qrScanner.start(
-cameraId,
-{ fps: 10, qrbox: { width: 220, height: 220 } },
-(decodedText) => {
+const onDecoded = (decodedText) => {
 if (qrReadLock) return;
 qrReadLock = true;
 submitQrMatch(decodedText, true).finally(() => {
 setTimeout(() => { qrReadLock = false; }, 500);
 });
-},
-() => {}
-);
+};
+
+const scannerConfig = { fps: 10, qrbox: { width: 220, height: 220 } };
+
+const startAttempts = [];
+// 1) Intentar frontal por constraint (lo pedido para tablet).
+startAttempts.push({ cameraConfig: { facingMode: 'user' }, label: 'frontal' });
+// 2) Intentar frontal por id si existe etiqueta.
+const frontByLabel = cameras.find((cam) => /front|user|frontal|delantera/i.test(cam.label));
+if (frontByLabel) {
+startAttempts.push({ cameraConfig: frontByLabel.id, label: 'frontal' });
+}
+// 3) Fallback a trasera.
+const rearByLabel = cameras.find((cam) => /rear|back|trasera|posterior|environment/i.test(cam.label));
+if (rearByLabel) {
+startAttempts.push({ cameraConfig: rearByLabel.id, label: 'trasera' });
+}
+// 4) Ultimo fallback: primera camara disponible.
+startAttempts.push({ cameraConfig: cameras[0].id, label: 'disponible' });
+
+let started = false;
+for (const attempt of startAttempts) {
+try {
+await qrScanner.start(attempt.cameraConfig, scannerConfig, onDecoded, () => {});
+started = true;
+qrStatusEl.textContent = `Camara ${attempt.label} activa. Escaneando QR...`;
+break;
+} catch {
+// Probar siguiente opcion.
+}
+}
+
+if (!started) {
+qrStatusEl.textContent = 'No se pudo abrir la camara. Usa entrada manual.';
+return;
+}
 
 qrScannerActive = true;
-qrStatusEl.textContent = 'Camara activa. Escaneando QR...';
 } catch {
 qrStatusEl.textContent = 'No se pudo abrir la camara. Usa entrada manual.';
 }
