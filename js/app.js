@@ -336,6 +336,9 @@ stopQrScanner();
 function normalizeQrValue(value) {
 const clean = value.trim();
 if (!clean) return '';
+if ((clean.startsWith('{') && clean.endsWith('}')) || (clean.startsWith('[') && clean.endsWith(']'))) {
+return clean;
+}
 if (clean.includes(':')) {
 const parts = clean.split(':');
 return parts[parts.length - 1].trim();
@@ -344,17 +347,19 @@ return clean;
 }
 
 function findWorkerByQr(qrRaw) {
-let qrValue = normalizeQrValue(qrRaw);
+const raw = String(qrRaw || '').trim();
+let qrValue = raw;
 let qrCompany = '';
 
 try {
-const parsed = JSON.parse(qrValue);
+const parsed = JSON.parse(raw);
 if (parsed && typeof parsed === 'object') {
 qrValue = String(parsed.workerId || parsed.id || parsed.dni || parsed.nombre || '').trim();
 qrCompany = String(parsed.empresa || parsed.company || '').trim();
 }
 } catch {
-// If it's not JSON, use plain value as ID/DNI/name.
+// If it's not JSON, fallback to plain value parser.
+qrValue = normalizeQrValue(raw);
 }
 
 const lookup = qrValue.toLowerCase();
