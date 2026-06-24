@@ -346,19 +346,69 @@ return parts[parts.length - 1].trim();
 return clean;
 }
 
+function normalizeText(value) {
+return String(value || '')
+.normalize('NFD')
+.replace(/[\u0300-\u036f]/g, '')
+.toLowerCase()
+.trim()
+.replace(/\s+/g, ' ');
+}
+
+function normalizeIdLike(value) {
+return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function tryParseQrObject(raw) {
+const source = String(raw || '').trim();
+if (!source) return null;
+
+try {
+const parsed = JSON.parse(source);
+if (parsed && typeof parsed === 'object') return parsed;
+} catch {
+// Continue with extraction fallbacks.
+}
+
+const firstBrace = source.indexOf('{');
+const lastBrace = source.lastIndexOf('}');
+if (firstBrace >= 0 && lastBrace > firstBrace) {
+const jsonSlice = source.slice(firstBrace, lastBrace + 1);
+try {
+const parsed = JSON.parse(jsonSlice);
+if (parsed && typeof parsed === 'object') return parsed;
+} catch {
+// Ignore invalid JSON slice.
+}
+}
+
+try {
+const url = new URL(source);
+const workerId = url.searchParams.get('workerId') || url.searchParams.get('id');
+const dni = url.searchParams.get('dni');
+const nombre = url.searchParams.get('nombre');
+const empresa = url.searchParams.get('empresa') || url.searchParams.get('company');
+if (workerId || dni || nombre || empresa) {
+return { workerId, dni, nombre, empresa };
+}
+} catch {
+// Not a URL payload.
+}
+
+return null;
+}
+
 function findWorkerByQr(qrRaw) {
 const raw = String(qrRaw || '').trim();
 let qrValue = raw;
 let qrCompany = '';
 
-try {
-const parsed = JSON.parse(raw);
-if (parsed && typeof parsed === 'object') {
+const parsed = tryParseQrObject(raw);
+if (parsed) {
 qrValue = String(parsed.workerId || parsed.id || parsed.dni || parsed.nombre || '').trim();
 qrCompany = String(parsed.empresa || parsed.company || '').trim();
-}
-} catch {
-// If it's not JSON, fallback to plain value parser.
+} else {
+// If it's not structured payload, fallback to plain value parser.
 qrValue = normalizeQrValue(raw);
 }
 
@@ -367,13 +417,18 @@ if (!lookup) {
 return { worker: null, companyMismatch: false };
 }
 
+const lookupIdLike = normalizeIdLike(lookup);
+const lookupText = normalizeText(lookup);
+
 const worker = state.workers.find((item) => {
 return item.id.toLowerCase() === lookup
 || item.dni.toLowerCase() === lookup
-|| item.nombre.toLowerCase() === lookup;
+|| normalizeText(item.nombre) === lookupText
+|| normalizeIdLike(item.id) === lookupIdLike
+|| normalizeIdLike(item.dni) === lookupIdLike;
 }) || null;
 
-if (worker && qrCompany && worker.empresa.toLowerCase() !== qrCompany.toLowerCase()) {
+if (worker && qrCompany && normalizeText(worker.empresa) !== normalizeText(qrCompany)) {
 return { worker: null, companyMismatch: true };
 }
 
