@@ -459,10 +459,24 @@ const onDecoded = async (decodedText) => {
 if (qrReadLock) return;
 qrReadLock = true;
 qrInputEl.value = decodedText;
-qrStatusEl.textContent = 'QR leido. Validando trabajador...';
-await submitQrMatch(decodedText, true).finally(() => {
-setTimeout(() => { qrReadLock = false; }, 500);
+qrStatusEl.textContent = 'QR leido. Procesando...';
+
+const timeoutPromise = new Promise((resolve) => {
+setTimeout(() => resolve(false), 5000);
 });
+
+const result = await Promise.race([
+submitQrMatch(decodedText, true),
+timeoutPromise
+]);
+
+if (result === false) {
+qrStatusEl.textContent = 'Lectura recibida, pero no se pudo completar. Prueba de nuevo o usa entrada manual.';
+}
+
+setTimeout(() => {
+setTimeout(() => { qrReadLock = false; }, 500);
+}, 0);
 };
 
 const scannerConfig = { fps: 10, qrbox: { width: 220, height: 220 } };
@@ -554,11 +568,21 @@ showToast('QR valido. Selecciona Pausa o Salida.');
 
 async function submitQrMatch(qrRaw = null, fromCamera = false) {
 qrStatusEl.textContent = 'Validando trabajador...';
-await refreshAllDataSilently();
+refreshAllDataSilently();
 
 const payload = qrRaw ?? qrInputEl.value;
-const match = findWorkerByQr(payload);
-const worker = match.worker;
+let match = findWorkerByQr(payload);
+let worker = match.worker;
+
+if (!worker) {
+try {
+await loadWorkers();
+match = findWorkerByQr(payload);
+worker = match.worker;
+} catch {
+// Continuar con datos actuales.
+}
+}
 
 if (match.companyMismatch) {
 qrStatusEl.textContent = 'Empresa del QR no coincide con la seleccionada.';
@@ -578,7 +602,7 @@ showToast('Trabajador inactivo', 'warn');
 return false;
 }
 
-if (worker.empresa !== state.selectedCompany) {
+if (normalizeText(worker.empresa) !== normalizeText(state.selectedCompany || '')) {
 qrStatusEl.textContent = 'El QR pertenece a otra empresa.';
 showToast('El QR no pertenece a la empresa seleccionada', 'warn');
 return false;
