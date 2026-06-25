@@ -5,7 +5,7 @@
   "start_url": "/LinClock/",
   "scope": "/LinClock/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#f0f5f7",
   "theme_color": "#0f766e",
   "icons": [
